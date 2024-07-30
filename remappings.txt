@@ -1,5 +1,7 @@
 forge-std/=node_modules/forge-std/src
 halmos-cheatcodes=node_modules/halmos-cheatcodes
+openzeppelin-contracts/=node_modules/@openzeppelin/contracts
+aave/core-v3/=node_modules/@aave/core-v3/contracts
 
 contracts/=src/contracts
 interfaces/=src/interfaces
