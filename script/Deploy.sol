@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity 0.8.26;
 
-import {IPool} from '@aave/core-v3/contracts/interfaces/IPool.sol';
-import {Grateful} from 'contracts/Grateful.sol';
-import {Script} from 'forge-std/Script.sol';
-import {IERC20} from 'forge-std/interfaces/IERC20.sol';
+import {Grateful} from "contracts/Grateful.sol";
+import {Script} from "forge-std/Script.sol";
+import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import {IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
 contract Deploy is Script {
   struct DeploymentParams {

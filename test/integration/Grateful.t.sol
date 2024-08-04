@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity 0.8.26;
 
-import {console} from 'forge-std/console.sol';
-import {IntegrationBase} from 'test/integration/IntegrationBase.sol';
+import {console} from "forge-std/console.sol";
+import {IntegrationBase} from "test/integration/IntegrationBase.sol";
 
 contract IntegrationGreeter is IntegrationBase {
   function test_Payment() public {
