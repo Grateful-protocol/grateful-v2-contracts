@@ -76,12 +76,24 @@ interface IGrateful {
   //////////////////////////////////////////////////////////////*/
 
   /**
+   * @notice Adds a token to the whitelist
+   * @param _token Address of the token to be added to the whitelist
+   */
+  function addToken(address _token) external;
+
+  /**
    * @notice Makes a payment to a merchant
    * @param _merchant Address of the merchant receiving payment
    * @param _token Address of the token being used for payment
    * @param _amount Amount of the token to be paid
    */
   function pay(address _merchant, address _token, uint256 _amount) external;
+
+  /**
+   * @notice Withdraws funds from the vault
+   * @param _token Address of the token being withdrawn
+   */
+  function withdraw(address _token) external;
 
   /**
    * @notice Switch the preference of the merchant to yield funds or not

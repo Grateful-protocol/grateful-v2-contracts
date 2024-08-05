@@ -8,10 +8,19 @@ import {IGrateful} from "interfaces/IGrateful.sol";
 import {AaveV3ERC4626, IPool, IRewardsController} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
 contract Grateful is IGrateful, Ownable2Step {
+  // @inheritdoc IGrateful
   IPool public aavePool;
+
+  // @inheritdoc IGrateful
   mapping(address => bool) public tokensWhitelisted;
+
+  // @inheritdoc IGrateful
   mapping(address => bool) public yieldingFunds;
+
+  // @inheritdoc IGrateful
   mapping(address => AaveV3ERC4626) public vaults;
+
+  // @inheritdoc IGrateful
   mapping(address => mapping(address => uint256)) public shares;
 
   modifier onlyWhenTokenWhitelisted(address _token) {
@@ -29,9 +38,16 @@ contract Grateful is IGrateful, Ownable2Step {
     }
   }
 
+  /// @inheritdoc IGrateful
+  function addToken(address _token) external onlyOwner {
+    tokensWhitelisted[_token] = true;
+    IERC20(_token).approve(address(aavePool), type(uint256).max);
+  }
+
   // @inheritdoc IGrateful
   function addVault(address _token, address _vault) external onlyWhenTokenWhitelisted(_token) onlyOwner {
     vaults[_token] = AaveV3ERC4626(_vault);
+    IERC20(_token).approve(address(_vault), type(uint256).max);
   }
 
   // @inheritdoc IGrateful
@@ -49,6 +65,17 @@ contract Grateful is IGrateful, Ownable2Step {
         revert Grateful_TransferFailed();
       }
     }
+  }
+
+  // @inheritdoc IGrateful
+  function withdraw(address _token) external onlyWhenTokenWhitelisted(_token) {
+    AaveV3ERC4626 vault = vaults[_token];
+    if (address(vault) == address(0)) {
+      revert Grateful_VaultNotSet();
+    }
+    uint256 _shares = shares[msg.sender][_token];
+    shares[msg.sender][_token] = 0;
+    vault.redeem(_shares, msg.sender, address(this));
   }
 
   // @inheritdoc IGrateful
