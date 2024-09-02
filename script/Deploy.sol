@@ -34,7 +34,7 @@ contract Deploy is Script {
     Grateful _grateful = new Grateful(_params.tokens, _params.aavePool);
     AaveV3Vault _vault = new AaveV3Vault(
       ERC20(_params.tokens[0]),
-      ERC20(0x6d80113e533a2C0fe82EaBD35f1875DcEA89Ea97),
+      ERC20(0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c),
       _params.aavePool,
       address(0),
       IRewardsController(0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb),

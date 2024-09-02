@@ -9,9 +9,43 @@ import {AaveV3ERC4626, IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
  * @notice Interface for the Grateful contract that allows payments in whitelisted tokens with optional yield via AAVE.
  */
 interface IGrateful {
+  /*//////////////////////////////////////////////////////////////
+    /                             STRUCTS
+    //////////////////////////////////////////////////////////////*/
+
+  struct Subscription {
+    address token;
+    address sender;
+    uint256 amount;
+    address receiver;
+    uint40 interval;
+    uint40 lastPaymentTime;
+    uint16 paymentsAmount;
+  }
+
   /*///////////////////////////////////////////////////////////////
                             EVENTS
   //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Emitted when a payment is processed
+   * @param sender Address of the sender
+   * @param merchant Address of the merchant
+   * @param token Address of the token
+   * @param amount Amount of the token
+   * @param yielded Indicates if the payment was yielded
+   */
+  event PaymentProcessed(
+    address sender,
+    address merchant,
+    address token,
+    uint256 amount,
+    bool yielded,
+    uint256 paymentId,
+    uint256 subscriptionId
+  );
+
+  event OneTimePaymentCreated(address merchant, address token, uint256 amount);
 
   /*///////////////////////////////////////////////////////////////
                             ERRORS
@@ -36,6 +70,26 @@ interface IGrateful {
    * @notice Throws if the token is not whitelisted when adding a vault
    */
   error Grateful_VaultTokenNotWhitelisted();
+
+  /**
+   * @notice Throws if the subscription does not exist
+   */
+  error Grateful_SubscriptionDoesNotExist();
+
+  /**
+   * @notice Throws if the subscription is too early for the next payment
+   */
+  error Grateful_TooEarlyForNextPayment();
+
+  /**
+   * @notice Throws if the sender is not the owner of the subscription
+   */
+  error Grateful_OnlySenderCanCancelSubscription();
+
+  /**
+   * @notice Throws if the payments amount has been reached
+   */
+  error Grateful_PaymentsAmountReached();
 
   /*///////////////////////////////////////////////////////////////
                             VARIABLES
@@ -71,6 +125,12 @@ interface IGrateful {
    */
   function shares(address _merchant, address _token) external view returns (uint256 _shares);
 
+  /**
+   * @notice Returns the number of subscriptions
+   * @return _subscriptionCount Number of subscriptions
+   */
+  function subscriptionCount() external view returns (uint256 _subscriptionCount);
+
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
@@ -86,14 +146,54 @@ interface IGrateful {
    * @param _merchant Address of the merchant receiving payment
    * @param _token Address of the token being used for payment
    * @param _amount Amount of the token to be paid
+   * @param _id Id of the payment
    */
-  function pay(address _merchant, address _token, uint256 _amount) external;
+  function pay(address _merchant, address _token, uint256 _amount, uint256 _id) external;
+
+  /**
+   *  @notice Subscribes to a token for a specific amount and interval
+   * @param _token Address of the token being subscribed
+   * @param _receiver Address of the receiver of the payments
+   * @param _amount Amount of the token to be paid
+   * @param _interval Interval in seconds between payments
+   * @return subscriptionId Id of the subscription
+   */
+  function subscribe(
+    address _token,
+    address _receiver,
+    uint256 _amount,
+    uint40 _interval,
+    uint16 _paymentsAmount
+  ) external returns (uint256 subscriptionId);
+
+  /// @notice Creates a one-time payment
+  /// @param _merchant Address of the merchant
+  /// @param _token Address of the token
+  /// @param _amount Amount of the token
+  /// @return oneTimeAddress Address of the one-time payment
+  function createOneTimePayment(
+    address _merchant,
+    address _token,
+    uint256 _amount
+  ) external returns (address oneTimeAddress);
+
+  /**
+   * @notice Processes a subscription
+   * @param subscriptionId Id of the subscription to be processed
+   */
+  function processSubscription(uint256 subscriptionId) external;
 
   /**
    * @notice Withdraws funds from the vault
    * @param _token Address of the token being withdrawn
    */
   function withdraw(address _token) external;
+
+  /**
+   * @notice Cancels a subscription
+   * @param subscriptionId Id of the subscription to be cancelled
+   */
+  function cancelSubscription(uint256 subscriptionId) external;
 
   /**
    * @notice Switch the preference of the merchant to yield funds or not
@@ -106,4 +206,19 @@ interface IGrateful {
    * @param _vault Address of the vault contract
    */
   function addVault(address _token, address _vault) external;
+
+  /**
+   * @notice Calculates the id of a payment
+   * @param _sender Address of the sender
+   * @param _merchant Address of the merchant
+   * @param _token Address of the token
+   * @param _amount Amount of the token
+   * @return id Id of the payment
+   */
+  function calculateId(
+    address _sender,
+    address _merchant,
+    address _token,
+    uint256 _amount
+  ) external view returns (uint256);
 }
