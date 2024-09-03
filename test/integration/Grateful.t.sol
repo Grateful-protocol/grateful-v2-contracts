@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {IGrateful, IntegrationBase, OneTime} from "test/integration/IntegrationBase.sol";
+import {IGrateful, IntegrationBase} from "test/integration/IntegrationBase.sol";
 
 contract IntegrationGreeter is IntegrationBase {
   function test_Payment() public {

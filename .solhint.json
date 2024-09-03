@@ -10,7 +10,6 @@
     "no-empty-blocks": "off",
     "private-vars-leading-underscore": ["warn", { "strict": false }],
     "ordering": "warn",
-    "immutable-name-snakecase": "warn",
     "avoid-low-level-calls": "off",
     "no-console": "off",
     "max-line-length": ["warn", 120]

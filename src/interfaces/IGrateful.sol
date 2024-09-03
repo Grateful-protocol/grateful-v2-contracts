@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {OneTime} from "contracts/OneTime.sol";
-import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {AaveV3ERC4626, IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
 /**
@@ -193,20 +192,6 @@ interface IGrateful {
   /// @param _amount Amount of the token
   function receiveOneTimePayment(address _merchant, address _token, uint256 _paymentId, uint256 _amount) external;
 
-  /// @notice Computes the address of a one-time payment
-  /// @param _merchant Address of the merchant
-  /// @param _token Address of the token
-  /// @param _amount Amount of the token
-  /// @param _salt Salt used to compute the address
-  /// @return oneTime Address of the one-time payment
-  function computeOneTimeAddress(
-    address _merchant,
-    address _token,
-    uint256 _amount,
-    uint256 _salt,
-    uint256 _paymentId
-  ) external view returns (OneTime oneTime);
-
   /**
    * @notice Processes a subscription
    * @param subscriptionId Id of the subscription to be processed
@@ -236,6 +221,20 @@ interface IGrateful {
    * @param _vault Address of the vault contract
    */
   function addVault(address _token, address _vault) external;
+
+  /// @notice Computes the address of a one-time payment
+  /// @param _merchant Address of the merchant
+  /// @param _token Address of the token
+  /// @param _amount Amount of the token
+  /// @param _salt Salt used to compute the address
+  /// @return oneTime Address of the one-time payment
+  function computeOneTimeAddress(
+    address _merchant,
+    address _token,
+    uint256 _amount,
+    uint256 _salt,
+    uint256 _paymentId
+  ) external view returns (OneTime oneTime);
 
   /**
    * @notice Calculates the id of a payment

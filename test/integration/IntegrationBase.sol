@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {Grateful, IGrateful, OneTime} from "contracts/Grateful.sol";
+import {Grateful, IGrateful} from "contracts/Grateful.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 import {AaveV3Vault} from "contracts/vaults/AaveV3Vault.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IPool, IRewardsController} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
@@ -22,8 +21,8 @@ contract IntegrationBase is Test {
   address internal _usdcWhale = 0x555d73f2002A457211d690313f942B065eAD1FFF;
   address[] internal _tokens;
   IERC20 internal _usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-  address _aUsdc = 0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c;
-  address _rewardsController = 0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb;
+  address internal _aUsdc = 0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c;
+  address internal _rewardsController = 0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb;
   IPool internal _aavePool = IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2);
   IGrateful internal _grateful;
   AaveV3Vault internal _vault;

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.26;
+
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {IGrateful} from "interfaces/IGrateful.sol";
 
