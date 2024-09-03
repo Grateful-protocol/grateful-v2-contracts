@@ -68,17 +68,19 @@ contract IntegrationGreeter is IntegrationBase {
   }
 
   function test_OneTimePayment() public {
-    // 1. Merchant calls api to make one time payment to his address
-    vm.prank(_gratefulAutomation);
-    address oneTimeAddress = _grateful.createOneTimePayment(_merchant, address(_usdc), _amount);
+    // 1. Calculate payment id
+    uint256 paymentId = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
 
-    // 2. Once the payment address is created, the client sends the payment
+    // 2. Precompute address
+    address precomputed = address(_grateful.computeOneTimeAddress(_merchant, address(_usdc), _amount, 4, paymentId));
+
+    // 3. Once the payment address is precomputed, the client sends the payment
     vm.prank(_usdcWhale);
-    _usdc.transfer(oneTimeAddress, _amount); // Only tx sent by the client, doesn't need contract interaction
+    _usdc.transfer(precomputed, _amount); // Only tx sent by the client, doesn't need contract interaction
 
-    // 3. The payment is processed
+    // 4. Merchant calls api to make one time payment to his address
     vm.prank(_gratefulAutomation);
-    OneTime(oneTimeAddress).processPayment();
+    _grateful.createOneTimePayment(_merchant, address(_usdc), _amount, 4, paymentId, precomputed);
 
     // Merchant receives the payment
     assertEq(_usdc.balanceOf(_merchant), _amount);

@@ -5,12 +5,15 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import {OneTime} from "contracts/OneTime.sol";
-import {console} from "forge-std/console.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {IGrateful} from "interfaces/IGrateful.sol";
-import {AaveV3ERC4626, IPool, IRewardsController} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
+
+import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
+import {AaveV3ERC4626, IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
 contract Grateful is IGrateful, Ownable2Step {
+  using Bytes32AddressLib for bytes32;
+
   // @inheritdoc IGrateful
   IPool public aavePool;
 
@@ -27,6 +30,8 @@ contract Grateful is IGrateful, Ownable2Step {
   mapping(address => mapping(address => uint256)) public shares;
 
   mapping(uint256 => Subscription) public subscriptions;
+
+  mapping(address => bool) public oneTimePayments;
 
   // @inheritdoc IGrateful
   uint256 public subscriptionCount;
@@ -125,13 +130,49 @@ contract Grateful is IGrateful, Ownable2Step {
     subscription.paymentsAmount--;
   }
 
+  // @inheritdoc IGrateful
   function createOneTimePayment(
     address _merchant,
     address _token,
-    uint256 _amount
-  ) external onlyWhenTokenWhitelisted(_token) returns (address oneTimeAddress) {
-    oneTimeAddress = address(new OneTime(IERC20(_token), _merchant, _amount));
+    uint256 _amount,
+    uint256 _salt,
+    uint256 _paymentId,
+    address precomputed
+  ) external onlyWhenTokenWhitelisted(_token) returns (OneTime oneTime) {
+    oneTimePayments[precomputed] = true;
+    oneTime =
+      new OneTime{salt: bytes32(_salt)}(IGrateful(address(this)), IERC20(_token), _merchant, _amount, _paymentId);
     emit OneTimePaymentCreated(_merchant, _token, _amount);
+  }
+
+  function receiveOneTimePayment(address _merchant, address _token, uint256 _paymentId, uint256 _amount) external {
+    if (!oneTimePayments[msg.sender]) {
+      revert Grateful_OneTimeNotFound();
+    }
+    _processPayment(msg.sender, _merchant, _token, _amount, _paymentId, 0);
+  }
+
+  function computeOneTimeAddress(
+    address _merchant,
+    address _token,
+    uint256 _amount,
+    uint256 _salt,
+    uint256 _paymentId
+  ) external view returns (OneTime oneTime) {
+    return OneTime(
+      keccak256(
+        abi.encodePacked(
+          bytes1(0xFF),
+          address(this),
+          bytes32(_salt),
+          keccak256(
+            abi.encodePacked(
+              type(OneTime).creationCode, abi.encode(address(this), _token, _merchant, _amount, _paymentId)
+            )
+          )
+        )
+      ).fromLast20Bytes()
+    );
   }
 
   // @inheritdoc IGrateful

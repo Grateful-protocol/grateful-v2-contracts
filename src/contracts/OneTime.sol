@@ -1,19 +1,9 @@
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import {IGrateful} from "interfaces/IGrateful.sol";
 
 contract OneTime {
-  IERC20 public token;
-  address public merchant;
-  uint256 public amount;
-  bool public paid;
-
-  constructor(IERC20 _token, address _merchant, uint256 _amount) {
-    token = _token;
-    merchant = _merchant;
-    amount = _amount;
-  }
-
-  function processPayment() public {
-    paid = true;
-    token.transfer(merchant, amount);
+  constructor(IGrateful _grateful, IERC20 _token, address _merchant, uint256 _amount, uint256 _paymentId) {
+    _token.approve(address(_grateful), _amount);
+    _grateful.receiveOneTimePayment(_merchant, address(_token), _paymentId, _amount);
   }
 }
