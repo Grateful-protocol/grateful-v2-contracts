@@ -36,6 +36,9 @@ contract Grateful is IGrateful, Ownable2Step {
   // @inheritdoc IGrateful
   uint256 public subscriptionCount;
 
+  // @inheritdoc IGrateful
+  uint256 public fee;
+
   modifier onlyWhenTokenWhitelisted(address _token) {
     if (!tokensWhitelisted[_token]) {
       revert Grateful_TokenNotWhitelisted();
@@ -205,6 +208,11 @@ contract Grateful is IGrateful, Ownable2Step {
     yieldingFunds[msg.sender] = !yieldingFunds[msg.sender];
   }
 
+  function applyFee(uint256 amount) public view returns (uint256) {
+    uint256 fee = (amount * 100) / 10_000;
+    return amount - fee;
+  }
+
   /**
    * @notice Processes a payment
    * @param _sender Address of the sender
@@ -222,19 +230,22 @@ contract Grateful is IGrateful, Ownable2Step {
     uint256 _paymentId,
     uint256 _subscriptionId
   ) internal {
+    uint256 amountWithFee = applyFee(_amount);
     if (yieldingFunds[_merchant]) {
       AaveV3ERC4626 vault = vaults[_token];
       if (address(vault) == address(0)) {
         revert Grateful_VaultNotSet();
       }
-      IERC20(_token).transferFrom(_sender, address(this), _amount);
-      uint256 _shares = vault.deposit(_amount, address(this));
+      IERC20(_token).transferFrom(_sender, address(this), amountWithFee);
+      uint256 _shares = vault.deposit(amountWithFee, address(this));
       shares[_merchant][_token] += _shares;
     } else {
-      if (!IERC20(_token).transferFrom(_sender, _merchant, _amount)) {
+      if (!IERC20(_token).transferFrom(_sender, _merchant, amountWithFee)) {
         revert Grateful_TransferFailed();
       }
     }
+
+    IERC20(_token).transferFrom(_sender, owner(), _amount - amountWithFee);
 
     emit PaymentProcessed(_sender, _merchant, _token, _amount, yieldingFunds[_merchant], _paymentId, _subscriptionId);
   }

@@ -136,6 +136,12 @@ interface IGrateful {
    */
   function subscriptionCount() external view returns (uint256 _subscriptionCount);
 
+  /**
+   * @notice Returns the fee applied to the payments
+   * @return _fee Fee applied to the payments
+   */
+  function fee() external view returns (uint256);
+
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
@@ -250,4 +256,9 @@ interface IGrateful {
     address _token,
     uint256 _amount
   ) external view returns (uint256);
+
+  /// @notice Applies the fee to an amount
+  /// @param amount Amount of the token
+  /// @return amountWithFee Amount of the token with the fee applied
+  function applyFee(uint256 amount) external view returns (uint256);
 }

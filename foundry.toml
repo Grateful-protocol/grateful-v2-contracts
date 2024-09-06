@@ -36,3 +36,5 @@ optimism-sepolia = "${OPTIMISM_SEPOLIA_RPC}"
 mainnet = { key = "${ETHERSCAN_API_KEY}", chain = "mainnet" }
 sepolia = { key = "${ETHERSCAN_API_KEY}", chain = "sepolia" }
 optimism-sepolia = { key = "${ETHERSCAN_API_KEY}", chain = "optimism-sepolia" }
+arbitrum-sepolia = { key = "${ARBITRUM_ETHERSCAN_API_KEY}", chain = "arbitrum-sepolia" }
+unknown_chain = { key = "${TENDERLY_ACCESS_KEY}", chain = 4924, url = "${VIRTUAL_OPTIMISM_RPC}/verify/etherscan" }

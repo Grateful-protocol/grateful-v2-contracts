@@ -12,7 +12,7 @@ contract IntegrationGreeter is IntegrationBase {
     );
     vm.stopPrank();
 
-    assertEq(_usdc.balanceOf(_merchant), _amount);
+    assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount));
   }
 
   function test_PaymentYieldingFunds() public {
@@ -35,7 +35,7 @@ contract IntegrationGreeter is IntegrationBase {
     vm.prank(_merchant);
     _grateful.withdraw(address(_usdc));
 
-    assertGt(_usdc.balanceOf(_merchant), _amount);
+    assertGt(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount));
   }
 
   function test_Subscription() public {
@@ -45,7 +45,7 @@ contract IntegrationGreeter is IntegrationBase {
     vm.stopPrank();
 
     // When subscription is created, a initial payment is made
-    assertEq(_usdc.balanceOf(_merchant), _amount);
+    assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount));
 
     // Shouldn't be able to process the subscription before 30 days have passed
     vm.expectRevert(IGrateful.Grateful_TooEarlyForNextPayment.selector);
@@ -56,7 +56,7 @@ contract IntegrationGreeter is IntegrationBase {
 
     _grateful.processSubscription(subscriptionId);
 
-    assertEq(_usdc.balanceOf(_merchant), _amount * 2);
+    assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount) * 2);
 
     // Should revert if the payments amount has been reached
 
@@ -83,6 +83,6 @@ contract IntegrationGreeter is IntegrationBase {
     _grateful.createOneTimePayment(_merchant, address(_usdc), _amount, 4, paymentId, precomputed);
 
     // Merchant receives the payment
-    assertEq(_usdc.balanceOf(_merchant), _amount);
+    assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount));
   }
 }
