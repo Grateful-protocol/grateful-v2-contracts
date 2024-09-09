@@ -27,6 +27,7 @@ contract IntegrationBase is Test {
   IGrateful internal _grateful;
   AaveV3Vault internal _vault;
   uint256 internal _amount = 10 * 10 ** 6; // 10 DAI
+  uint256 internal _fee = 100;
 
   function setUp() public {
     vm.startPrank(_owner);
@@ -34,7 +35,7 @@ contract IntegrationBase is Test {
     vm.label(address(_vault), "Vault");
     _tokens = new address[](1);
     _tokens[0] = address(_usdc);
-    _grateful = new Grateful(_tokens, _aavePool);
+    _grateful = new Grateful(_tokens, _aavePool, _fee);
     _vault = new AaveV3Vault(
       ERC20(address(_usdc)),
       ERC20(_aUsdc),

@@ -46,8 +46,9 @@ contract Grateful is IGrateful, Ownable2Step {
     _;
   }
 
-  constructor(address[] memory _tokens, IPool _aavePool) Ownable(msg.sender) {
+  constructor(address[] memory _tokens, IPool _aavePool, uint256 _initialFee) Ownable(msg.sender) {
     aavePool = _aavePool;
+    fee = _initialFee;
     for (uint256 i = 0; i < _tokens.length; i++) {
       tokensWhitelisted[_tokens[i]] = true;
       IERC20(_tokens[i]).approve(address(_aavePool), type(uint256).max);
@@ -209,8 +210,8 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   function applyFee(uint256 amount) public view returns (uint256) {
-    uint256 fee = (amount * 100) / 10_000;
-    return amount - fee;
+    uint256 feeAmount = (amount * fee) / 10_000;
+    return amount - feeAmount;
   }
 
   /**
@@ -248,5 +249,9 @@ contract Grateful is IGrateful, Ownable2Step {
     IERC20(_token).transferFrom(_sender, owner(), _amount - amountWithFee);
 
     emit PaymentProcessed(_sender, _merchant, _token, _amount, yieldingFunds[_merchant], _paymentId, _subscriptionId);
+  }
+
+  function setFee(uint256 _newFee) external onlyOwner {
+    fee = _newFee;
   }
 }
