@@ -85,4 +85,37 @@ contract IntegrationGreeter is IntegrationBase {
     // Merchant receives the payment
     assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount));
   }
+
+  function test_OneTimePaymentYieldingFunds() public {
+    // 1. Calculate payment id
+    uint256 paymentId = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
+
+    // 2. Precompute address
+    address precomputed = address(_grateful.computeOneTimeAddress(_merchant, address(_usdc), _amount, 4, paymentId));
+
+    // 3. Once the payment address is precomputed, the client sends the payment
+    vm.prank(_usdcWhale);
+    _usdc.transfer(precomputed, _amount);
+
+    // 4. Set merchant to yield funds
+    vm.prank(_merchant);
+    _grateful.switchYieldingFunds();
+
+    // 5. Grateful automation calls api to make one time payment to his address
+    vm.prank(_gratefulAutomation);
+    _grateful.createOneTimePayment(_merchant, address(_usdc), _amount, 4, paymentId, precomputed);
+    // 6. Advance time
+    vm.warp(block.timestamp + 1 days);
+
+    // 7. Merchant withdraws funds
+    vm.prank(_merchant);
+    _grateful.withdraw(address(_usdc));
+
+    // 8. Check if merchant's balance is greater than the amount with fee applied
+    assertGt(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount));
+
+    // 9. Check that owner holds the fee amount
+    uint256 feeAmount = _amount - _grateful.applyFee(_amount);
+    assertEq(_usdc.balanceOf(_owner), feeAmount);
+  }
 }
