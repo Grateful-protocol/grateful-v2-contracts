@@ -2,6 +2,8 @@
 pragma solidity 0.8.26;
 
 import {Grateful} from "contracts/Grateful.sol";
+
+import {TestToken} from "contracts/external/TestToken.sol";
 import {AaveV3Vault} from "contracts/vaults/AaveV3Vault.sol";
 import {Script} from "forge-std/Script.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -11,6 +13,7 @@ contract Deploy is Script {
   struct DeploymentParams {
     address[] tokens;
     IPool aavePool;
+    uint256 initialFee;
   }
 
   /// @notice Deployment parameters for each chain
@@ -30,25 +33,25 @@ contract Deploy is Script {
     );
 
     // Mainnet
-    _deploymentParams[1] = DeploymentParams(_tokens, IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2));
+    _deploymentParams[1] = DeploymentParams(_tokens, IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2), 100);
 
     // Optimism Sepolia
-    _deploymentParams[11_155_420] = DeploymentParams(_tokens, IPool(0xb50201558B00496A145fE76f7424749556E326D8));
+    _deploymentParams[11_155_420] = DeploymentParams(_tokens, IPool(0xb50201558B00496A145fE76f7424749556E326D8), 100);
 
     // V-Optimism
     _deploymentParams[4924] =
-      DeploymentParams(_tokensOptimismSepolia, IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD));
+      DeploymentParams(_tokensOptimismSepolia, IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD), 100);
 
     // Arbitrum
     _deploymentParams[421_614] =
-      DeploymentParams(_tokensArbitrumSepolia, IPool(0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff));
+      DeploymentParams(_tokensArbitrumSepolia, IPool(0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff), 100);
   }
 
   function run() public {
     DeploymentParams memory _params = _deploymentParams[block.chainid];
 
     vm.startBroadcast();
-    Grateful _grateful = new Grateful(_params.tokens, _params.aavePool);
+    Grateful _grateful = new Grateful(_params.tokens, _params.aavePool, _params.initialFee);
     AaveV3Vault _vault = new AaveV3Vault(
       ERC20(_params.tokens[0]),
       ERC20(0x460b97BD498E1157530AEb3086301d5225b91216),
@@ -58,6 +61,13 @@ contract Deploy is Script {
       address(_grateful)
     );
     _grateful.addVault(_params.tokens[0], address(_vault));
+
+    // Deploy TestToken
+    TestToken _testToken = new TestToken("Test Token", "TEST", 18);
+
+    // Add TestToken to Grateful
+    _grateful.addToken(address(_testToken));
+
     vm.stopBroadcast();
   }
 }
