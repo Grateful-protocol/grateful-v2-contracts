@@ -11,33 +11,46 @@ import {IGrateful} from "interfaces/IGrateful.sol";
 import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
 import {AaveV3ERC4626, IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
+/**
+ * @title Grateful Contract
+ * @notice Allows payments in whitelisted tokens with optional yield via AAVE, including payment splitting functionality.
+ */
 contract Grateful is IGrateful, Ownable2Step {
   using Bytes32AddressLib for bytes32;
 
-  // @inheritdoc IGrateful
+  /*//////////////////////////////////////////////////////////////
+                               STATE VARIABLES
+    //////////////////////////////////////////////////////////////*/
+
+  /// @inheritdoc IGrateful
   IPool public aavePool;
 
-  // @inheritdoc IGrateful
+  /// @inheritdoc IGrateful
   mapping(address => bool) public tokensWhitelisted;
 
-  // @inheritdoc IGrateful
+  /// @inheritdoc IGrateful
   mapping(address => bool) public yieldingFunds;
 
-  // @inheritdoc IGrateful
+  /// @inheritdoc IGrateful
   mapping(address => AaveV3ERC4626) public vaults;
 
-  // @inheritdoc IGrateful
+  /// @inheritdoc IGrateful
   mapping(address => mapping(address => uint256)) public shares;
 
   mapping(uint256 => Subscription) public subscriptions;
 
+  /// @inheritdoc IGrateful
   mapping(address => bool) public oneTimePayments;
 
-  // @inheritdoc IGrateful
+  /// @inheritdoc IGrateful
   uint256 public subscriptionCount;
 
-  // @inheritdoc IGrateful
+  /// @inheritdoc IGrateful
   uint256 public fee;
+
+  /*//////////////////////////////////////////////////////////////
+                                MODIFIERS
+    //////////////////////////////////////////////////////////////*/
 
   modifier onlyWhenTokenWhitelisted(address _token) {
     if (!tokensWhitelisted[_token]) {
@@ -46,6 +59,16 @@ contract Grateful is IGrateful, Ownable2Step {
     _;
   }
 
+  /*//////////////////////////////////////////////////////////////
+                              CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Initializes the Grateful contract.
+   * @param _tokens Array of token addresses to whitelist.
+   * @param _aavePool Address of the Aave V3 pool.
+   * @param _initialFee Initial fee in basis points (10000 = 100%).
+   */
   constructor(address[] memory _tokens, IPool _aavePool, uint256 _initialFee) Ownable(msg.sender) {
     aavePool = _aavePool;
     fee = _initialFee;
@@ -55,7 +78,11 @@ contract Grateful is IGrateful, Ownable2Step {
     }
   }
 
-  // @inheritdoc IGrateful
+  /*//////////////////////////////////////////////////////////////
+                            PUBLIC FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+  /// @inheritdoc IGrateful
   function calculateId(
     address _sender,
     address _merchant,
@@ -66,23 +93,103 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   /// @inheritdoc IGrateful
+  function applyFee(uint256 amount) public view returns (uint256) {
+    uint256 feeAmount = (amount * fee) / 10_000;
+    return amount - feeAmount;
+  }
+
+  /*//////////////////////////////////////////////////////////////
+                          EXTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+  /// @inheritdoc IGrateful
   function addToken(address _token) external onlyOwner {
     tokensWhitelisted[_token] = true;
     IERC20(_token).approve(address(aavePool), type(uint256).max);
   }
 
-  // @inheritdoc IGrateful
-  function addVault(address _token, address _vault) external onlyWhenTokenWhitelisted(_token) onlyOwner {
+  /// @inheritdoc IGrateful
+  function addVault(address _token, address _vault) external onlyOwner onlyWhenTokenWhitelisted(_token) {
     vaults[_token] = AaveV3ERC4626(_vault);
     IERC20(_token).approve(address(_vault), type(uint256).max);
   }
 
-  // @inheritdoc IGrateful
-  function pay(address _merchant, address _token, uint256 _amount, uint256 _id) public onlyWhenTokenWhitelisted(_token) {
-    _processPayment(msg.sender, _merchant, _token, _amount, _id, 0); // 0 because no subscription is involved
+  /// @inheritdoc IGrateful
+  function pay(
+    address _merchant,
+    address _token,
+    uint256 _amount,
+    uint256 _id
+  ) external onlyWhenTokenWhitelisted(_token) {
+    _processPayment(
+      msg.sender,
+      _merchant,
+      _token,
+      _amount,
+      _id,
+      0, // 0 because no subscription is involved
+      new address[](0),
+      new uint256[](0)
+    );
   }
 
-  // @inheritdoc IGrateful
+  /// @inheritdoc IGrateful
+  function pay(
+    address _merchant,
+    address _token,
+    uint256 _amount,
+    uint256 _id,
+    address[] calldata _recipients,
+    uint256[] calldata _percentages
+  ) external onlyWhenTokenWhitelisted(_token) {
+    _processPayment(
+      msg.sender,
+      _merchant,
+      _token,
+      _amount,
+      _id,
+      0, // 0 because no subscription is involved
+      _recipients,
+      _percentages
+    );
+  }
+
+  /// @inheritdoc IGrateful
+  function subscribe(
+    address _token,
+    address _receiver,
+    uint256 _amount,
+    uint40 _interval,
+    uint16 _paymentsAmount,
+    address[] memory _recipients,
+    uint256[] memory _percentages
+  ) public onlyWhenTokenWhitelisted(_token) returns (uint256 subscriptionId) {
+    if (_recipients.length != _percentages.length) {
+      revert Grateful_MismatchedArrays();
+    }
+
+    subscriptionId = subscriptionCount++;
+
+    // Store the subscription details
+    Subscription storage subscription = subscriptions[subscriptionId];
+    subscription.token = _token;
+    subscription.sender = msg.sender;
+    subscription.amount = _amount;
+    subscription.receiver = _receiver;
+    subscription.interval = _interval;
+    subscription.paymentsAmount = _paymentsAmount - 1;
+    subscription.lastPaymentTime = uint40(block.timestamp);
+    subscription.recipients = _recipients;
+    subscription.percentages = _percentages;
+
+    // Precompute paymentId
+    uint256 paymentId = calculateId(msg.sender, _receiver, _token, _amount);
+
+    // Call _processPayment
+    _processPayment(msg.sender, _receiver, _token, _amount, paymentId, subscriptionId, _recipients, _percentages);
+  }
+
+  /// @inheritdoc IGrateful
   function subscribe(
     address _token,
     address _receiver,
@@ -90,32 +197,17 @@ contract Grateful is IGrateful, Ownable2Step {
     uint40 _interval,
     uint16 _paymentsAmount
   ) external onlyWhenTokenWhitelisted(_token) returns (uint256 subscriptionId) {
-    subscriptionId = subscriptionCount++;
-    subscriptions[subscriptionId] = Subscription({
-      token: _token,
-      sender: msg.sender,
-      amount: _amount,
-      receiver: _receiver,
-      interval: _interval,
-      paymentsAmount: _paymentsAmount - 1, // Subtract 1 because the first payment is already processed
-      lastPaymentTime: uint40(block.timestamp)
-    });
-
-    _processPayment(
-      msg.sender, _receiver, _token, _amount, calculateId(msg.sender, _receiver, _token, _amount), subscriptionId
-    );
+    return subscribe(_token, _receiver, _amount, _interval, _paymentsAmount, new address[](0), new uint256[](0));
   }
 
-  // @inheritdoc IGrateful
+  /// @inheritdoc IGrateful
   function processSubscription(uint256 subscriptionId) external {
     Subscription storage subscription = subscriptions[subscriptionId];
 
     if (subscription.amount == 0) {
       revert Grateful_SubscriptionDoesNotExist();
     }
-    if (
-      block.timestamp < subscription.lastPaymentTime + subscription.interval // min timestamp for next payment
-    ) {
+    if (block.timestamp < subscription.lastPaymentTime + subscription.interval) {
       revert Grateful_TooEarlyForNextPayment();
     }
     if (subscription.paymentsAmount == 0) {
@@ -128,13 +220,68 @@ contract Grateful is IGrateful, Ownable2Step {
       subscription.token,
       subscription.amount,
       calculateId(subscription.sender, subscription.receiver, subscription.token, subscription.amount),
-      subscriptionId
+      subscriptionId,
+      subscription.recipients,
+      subscription.percentages
     );
     subscription.lastPaymentTime = uint40(block.timestamp);
     subscription.paymentsAmount--;
   }
 
-  // @inheritdoc IGrateful
+  /// @inheritdoc IGrateful
+  function createOneTimePayment(
+    address _merchant,
+    address _token,
+    uint256 _amount,
+    uint256 _salt,
+    uint256 _paymentId,
+    address precomputed,
+    address[] calldata _recipients,
+    uint256[] calldata _percentages
+  ) external onlyWhenTokenWhitelisted(_token) returns (OneTime oneTime) {
+    oneTimePayments[precomputed] = true;
+    oneTime = new OneTime{salt: bytes32(_salt)}(
+      IGrateful(address(this)), IERC20(_token), _merchant, _amount, _paymentId, _recipients, _percentages
+    );
+    emit OneTimePaymentCreated(_merchant, _token, _amount);
+  }
+
+  /// @inheritdoc IGrateful
+  function receiveOneTimePayment(
+    address _merchant,
+    address _token,
+    uint256 _paymentId,
+    uint256 _amount,
+    address[] calldata _recipients,
+    uint256[] calldata _percentages
+  ) external {
+    if (!oneTimePayments[msg.sender]) {
+      revert Grateful_OneTimeNotFound();
+    }
+    _processPayment(msg.sender, _merchant, _token, _amount, _paymentId, 0, _recipients, _percentages);
+  }
+
+  /// @inheritdoc IGrateful
+  function computeOneTimeAddress(
+    address _merchant,
+    address _token,
+    uint256 _amount,
+    uint256 _salt,
+    uint256 _paymentId,
+    address[] calldata _recipients,
+    uint256[] calldata _percentages
+  ) external view returns (OneTime oneTime) {
+    bytes memory bytecode = abi.encodePacked(
+      type(OneTime).creationCode,
+      abi.encode(address(this), _token, _merchant, _amount, _paymentId, _recipients, _percentages)
+    );
+    bytes32 bytecodeHash = keccak256(bytecode);
+    bytes32 addressHash = keccak256(abi.encodePacked(bytes1(0xff), address(this), bytes32(_salt), bytecodeHash));
+    address computedAddress = address(uint160(uint256(addressHash)));
+    return OneTime(computedAddress);
+  }
+
+  /// @inheritdoc IGrateful
   function createOneTimePayment(
     address _merchant,
     address _token,
@@ -144,18 +291,21 @@ contract Grateful is IGrateful, Ownable2Step {
     address precomputed
   ) external onlyWhenTokenWhitelisted(_token) returns (OneTime oneTime) {
     oneTimePayments[precomputed] = true;
-    oneTime =
-      new OneTime{salt: bytes32(_salt)}(IGrateful(address(this)), IERC20(_token), _merchant, _amount, _paymentId);
+    oneTime = new OneTime{salt: bytes32(_salt)}(
+      IGrateful(address(this)), IERC20(_token), _merchant, _amount, _paymentId, new address[](0), new uint256[](0)
+    );
     emit OneTimePaymentCreated(_merchant, _token, _amount);
   }
 
+  /// @inheritdoc IGrateful
   function receiveOneTimePayment(address _merchant, address _token, uint256 _paymentId, uint256 _amount) external {
     if (!oneTimePayments[msg.sender]) {
       revert Grateful_OneTimeNotFound();
     }
-    _processPayment(msg.sender, _merchant, _token, _amount, _paymentId, 0);
+    _processPayment(msg.sender, _merchant, _token, _amount, _paymentId, 0, new address[](0), new uint256[](0));
   }
 
+  /// @inheritdoc IGrateful
   function computeOneTimeAddress(
     address _merchant,
     address _token,
@@ -163,23 +313,17 @@ contract Grateful is IGrateful, Ownable2Step {
     uint256 _salt,
     uint256 _paymentId
   ) external view returns (OneTime oneTime) {
-    return OneTime(
-      keccak256(
-        abi.encodePacked(
-          bytes1(0xFF),
-          address(this),
-          bytes32(_salt),
-          keccak256(
-            abi.encodePacked(
-              type(OneTime).creationCode, abi.encode(address(this), _token, _merchant, _amount, _paymentId)
-            )
-          )
-        )
-      ).fromLast20Bytes()
+    bytes memory bytecode = abi.encodePacked(
+      type(OneTime).creationCode,
+      abi.encode(address(this), _token, _merchant, _amount, _paymentId, new address[](0), new uint256[](0))
     );
+    bytes32 bytecodeHash = keccak256(bytecode);
+    bytes32 addressHash = keccak256(abi.encodePacked(bytes1(0xff), address(this), bytes32(_salt), bytecodeHash));
+    address computedAddress = address(uint160(uint256(addressHash)));
+    return OneTime(computedAddress);
   }
 
-  // @inheritdoc IGrateful
+  /// @inheritdoc IGrateful
   function withdraw(address _token) external onlyWhenTokenWhitelisted(_token) {
     AaveV3ERC4626 vault = vaults[_token];
     if (address(vault) == address(0)) {
@@ -190,7 +334,7 @@ contract Grateful is IGrateful, Ownable2Step {
     vault.redeem(_shares, msg.sender, address(this));
   }
 
-  // @inheritdoc IGrateful
+  /// @inheritdoc IGrateful
   function cancelSubscription(uint256 subscriptionId) external {
     Subscription storage subscription = subscriptions[subscriptionId];
 
@@ -204,24 +348,30 @@ contract Grateful is IGrateful, Ownable2Step {
     delete subscriptions[subscriptionId];
   }
 
-  // @inheritdoc IGrateful
+  /// @inheritdoc IGrateful
   function switchYieldingFunds() external {
     yieldingFunds[msg.sender] = !yieldingFunds[msg.sender];
   }
 
-  function applyFee(uint256 amount) public view returns (uint256) {
-    uint256 feeAmount = (amount * fee) / 10_000;
-    return amount - feeAmount;
+  /// @inheritdoc IGrateful
+  function setFee(uint256 _newFee) external onlyOwner {
+    fee = _newFee;
   }
 
+  /*//////////////////////////////////////////////////////////////
+                           INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
   /**
-   * @notice Processes a payment
-   * @param _sender Address of the sender
-   * @param _merchant Address of the merchant
-   * @param _token Address of the token
-   * @param _amount Amount of the token
-   * @param _paymentId Id of the payment
-   * @param _subscriptionId Id of the subscription, 0 if it is one-time
+   * @notice Processes a payment.
+   * @param _sender Address of the sender.
+   * @param _merchant Address of the merchant.
+   * @param _token Address of the token.
+   * @param _amount Amount of the token.
+   * @param _paymentId ID of the payment.
+   * @param _subscriptionId ID of the subscription, 0 if it is one-time.
+   * @param _recipients List of recipients for payment splitting.
+   * @param _percentages Corresponding percentages for each recipient.
    */
   function _processPayment(
     address _sender,
@@ -229,29 +379,72 @@ contract Grateful is IGrateful, Ownable2Step {
     address _token,
     uint256 _amount,
     uint256 _paymentId,
-    uint256 _subscriptionId
+    uint256 _subscriptionId,
+    address[] memory _recipients,
+    uint256[] memory _percentages
   ) internal {
+    // Transfer the full amount from the sender to this contract
+    if (!IERC20(_token).transferFrom(_sender, address(this), _amount)) {
+      revert Grateful_TransferFailed();
+    }
+
+    // Apply the fee
     uint256 amountWithFee = applyFee(_amount);
-    if (yieldingFunds[_merchant]) {
-      AaveV3ERC4626 vault = vaults[_token];
-      if (address(vault) == address(0)) {
-        revert Grateful_VaultNotSet();
+
+    // Transfer fee to owner
+    if (!IERC20(_token).transfer(owner(), _amount - amountWithFee)) {
+      revert Grateful_TransferFailed();
+    }
+
+    // If payment splitting is requested
+    if (_recipients.length > 0) {
+      if (_recipients.length != _percentages.length) {
+        revert Grateful_MismatchedArrays();
       }
-      IERC20(_token).transferFrom(_sender, address(this), amountWithFee);
-      uint256 _shares = vault.deposit(amountWithFee, address(this));
-      shares[_merchant][_token] += _shares;
+      uint256 totalPercentage = 0;
+      for (uint256 i = 0; i < _percentages.length; i++) {
+        totalPercentage += _percentages[i];
+      }
+      if (totalPercentage != 10_000) {
+        revert Grateful_InvalidTotalPercentage();
+      }
+
+      // Distribute amountWithFee among recipients
+      for (uint256 i = 0; i < _recipients.length; i++) {
+        address recipient = _recipients[i];
+        uint256 recipientShare = (amountWithFee * _percentages[i]) / 10_000;
+
+        if (yieldingFunds[recipient]) {
+          AaveV3ERC4626 vault = vaults[_token];
+          if (address(vault) == address(0)) {
+            revert Grateful_VaultNotSet();
+          }
+          uint256 _shares = vault.deposit(recipientShare, address(this));
+          shares[recipient][_token] += _shares;
+        } else {
+          // Transfer tokens to recipient
+          if (!IERC20(_token).transfer(recipient, recipientShare)) {
+            revert Grateful_TransferFailed();
+          }
+        }
+      }
     } else {
-      if (!IERC20(_token).transferFrom(_sender, _merchant, amountWithFee)) {
-        revert Grateful_TransferFailed();
+      // Proceed as before, paying the merchant
+      if (yieldingFunds[_merchant]) {
+        AaveV3ERC4626 vault = vaults[_token];
+        if (address(vault) == address(0)) {
+          revert Grateful_VaultNotSet();
+        }
+        uint256 _shares = vault.deposit(amountWithFee, address(this));
+        shares[_merchant][_token] += _shares;
+      } else {
+        // Transfer tokens to merchant
+        if (!IERC20(_token).transfer(_merchant, amountWithFee)) {
+          revert Grateful_TransferFailed();
+        }
       }
     }
 
-    IERC20(_token).transferFrom(_sender, owner(), _amount - amountWithFee);
-
     emit PaymentProcessed(_sender, _merchant, _token, _amount, yieldingFunds[_merchant], _paymentId, _subscriptionId);
-  }
-
-  function setFee(uint256 _newFee) external onlyOwner {
-    fee = _newFee;
   }
 }

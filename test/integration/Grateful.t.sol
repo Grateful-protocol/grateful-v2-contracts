@@ -118,4 +118,124 @@ contract IntegrationGreeter is IntegrationBase {
     uint256 feeAmount = _amount - _grateful.applyFee(_amount);
     assertEq(_usdc.balanceOf(_owner), feeAmount);
   }
+
+  function test_PaymentSplit() public {
+    // 1. Define recipients and percentages
+    address[] memory recipients = new address[](2);
+    recipients[0] = makeAddr("recipient1"); // Recipient 1
+    recipients[1] = makeAddr("recipient2"); // Recipient 2
+
+    uint256[] memory percentages = new uint256[](2);
+    percentages[0] = 7000; // 70%
+    percentages[1] = 3000; // 30%
+
+    // 2. Approve Grateful contract to spend USDC
+    vm.startPrank(_usdcWhale);
+    _usdc.approve(address(_grateful), _amount);
+
+    // 3. Make a payment with splitting
+    uint256 paymentId = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
+
+    _grateful.pay(_merchant, address(_usdc), _amount, paymentId, recipients, percentages);
+    vm.stopPrank();
+
+    // 4. Calculate expected amounts after fee
+    uint256 amountAfterFee = _grateful.applyFee(_amount);
+    uint256 expectedAmountRecipient0 = (amountAfterFee * percentages[0]) / 10_000;
+    uint256 expectedAmountRecipient1 = (amountAfterFee * percentages[1]) / 10_000;
+
+    // 5. Check balances of recipients
+    assertEq(_usdc.balanceOf(recipients[0]), expectedAmountRecipient0);
+    assertEq(_usdc.balanceOf(recipients[1]), expectedAmountRecipient1);
+
+    // Ensure the merchant did not receive any funds directly
+    assertEq(_usdc.balanceOf(_merchant), 0);
+  }
+
+  function test_OneTimePaymentSplit() public {
+    // 1. Define recipients and percentages
+    address[] memory recipients = new address[](2);
+    recipients[0] = makeAddr("recipient1"); // Recipient 1
+    recipients[1] = makeAddr("recipient2"); // Recipient 2
+
+    uint256[] memory percentages = new uint256[](2);
+    percentages[0] = 7000; // 70%
+    percentages[1] = 3000; // 30%
+
+    // 2. Calculate payment id
+    uint256 paymentId = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
+
+    // 3. Precompute address
+    address precomputed = address(
+      _grateful.computeOneTimeAddress(_merchant, address(_usdc), _amount, 4, paymentId, recipients, percentages)
+    );
+
+    // 4. Once the payment address is precomputed, the client sends the payment
+    vm.prank(_usdcWhale);
+    _usdc.transfer(precomputed, _amount);
+
+    // 5. Merchant calls api to make one time payment to his address
+    vm.prank(_gratefulAutomation);
+    _grateful.createOneTimePayment(
+      _merchant, address(_usdc), _amount, 4, paymentId, precomputed, recipients, percentages
+    );
+
+    // 6. Calculate expected amounts after fee
+    uint256 amountAfterFee = _grateful.applyFee(_amount);
+    uint256 expectedAmountRecipient0 = (amountAfterFee * percentages[0]) / 10_000;
+    uint256 expectedAmountRecipient1 = (amountAfterFee * percentages[1]) / 10_000;
+
+    // 7. Check balances of recipients
+    assertEq(_usdc.balanceOf(recipients[0]), expectedAmountRecipient0);
+    assertEq(_usdc.balanceOf(recipients[1]), expectedAmountRecipient1);
+
+    // Ensure owner received the fee
+    uint256 feeAmount = _amount - amountAfterFee;
+    assertEq(_usdc.balanceOf(_owner), feeAmount);
+  }
+
+  function test_SubscriptionSplit() public {
+    // 1. Define recipients and percentages
+    address[] memory recipients = new address[](2);
+    recipients[0] = makeAddr("recipient1"); // Recipient 1
+    recipients[1] = makeAddr("recipient2"); // Recipient 2
+
+    uint256[] memory percentages = new uint256[](2);
+    percentages[0] = 7000; // 70%
+    percentages[1] = 3000; // 30%
+
+    // 2. Subscribe to a plan
+    vm.startPrank(_usdcWhale);
+    _usdc.approve(address(_grateful), _amount * 2);
+    uint256 subscriptionId =
+      _grateful.subscribe(address(_usdc), _merchant, _amount, 30 days, 2, recipients, percentages);
+    vm.stopPrank();
+
+    // 3. Calculate expected amounts after fee
+    uint256 amountAfterFee = _grateful.applyFee(_amount);
+    uint256 expectedAmountRecipient0 = (amountAfterFee * percentages[0]) / 10_000;
+    uint256 expectedAmountRecipient1 = (amountAfterFee * percentages[1]) / 10_000;
+
+    // 4. Check balances of recipients
+    assertEq(_usdc.balanceOf(recipients[0]), expectedAmountRecipient0);
+    assertEq(_usdc.balanceOf(recipients[1]), expectedAmountRecipient1);
+
+    // Ensure owner received the fee
+    uint256 feeAmount = _amount - amountAfterFee;
+    assertEq(_usdc.balanceOf(_owner), feeAmount);
+
+    // 5. Fast forward time
+    vm.warp(block.timestamp + 30 days);
+
+    // 6. Process subscription
+    vm.prank(_gratefulAutomation);
+    _grateful.processSubscription(subscriptionId);
+
+    // 7. Check balances of recipients
+    assertEq(_usdc.balanceOf(recipients[0]), expectedAmountRecipient0 * 2);
+    assertEq(_usdc.balanceOf(recipients[1]), expectedAmountRecipient1 * 2);
+
+    // Ensure owner received the fee
+    assertEq(_usdc.balanceOf(_owner), feeAmount * 2);
+  }
 }
