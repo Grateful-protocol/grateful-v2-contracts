@@ -41,7 +41,18 @@ contract IntegrationGreeter is IntegrationBase {
   function test_Subscription() public {
     vm.startPrank(_usdcWhale);
     _usdc.approve(address(_grateful), _amount * 2);
-    uint256 subscriptionId = _grateful.subscribe(address(_usdc), _merchant, _amount, 30 days, 2);
+
+    vm.expectEmit(address(_grateful));
+
+    emit IGrateful.SubscriptionCreated(
+      0, // Because it is the first subscription
+      _usdcWhale,
+      _merchant,
+      _amount,
+      _subscriptionPlanId
+    );
+
+    uint256 subscriptionId = _grateful.subscribe(address(_usdc), _merchant, _amount, _subscriptionPlanId, 30 days, 2);
     vm.stopPrank();
 
     // When subscription is created, a initial payment is made
@@ -64,6 +75,54 @@ contract IntegrationGreeter is IntegrationBase {
     vm.warp(block.timestamp + 30 days);
 
     vm.expectRevert(IGrateful.Grateful_PaymentsAmountReached.selector);
+    _grateful.processSubscription(subscriptionId);
+
+    // Now, the sender extends the subscription
+    vm.startPrank(_usdcWhale);
+
+    // Approve additional funds for the extended payments
+    _usdc.approve(address(_grateful), _amount * 2);
+
+    // Extend the subscription by 2 additional payments
+    _grateful.extendSubscription(subscriptionId, 2);
+
+    vm.stopPrank();
+
+    // Process the extended payments
+
+    // Fast forward 30 days
+    vm.warp(block.timestamp + 30 days);
+
+    _grateful.processSubscription(subscriptionId);
+
+    // The merchant should have received three payments in total
+    assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount) * 3);
+
+    // Fast forward another 30 days
+    vm.warp(block.timestamp + 30 days);
+
+    _grateful.processSubscription(subscriptionId);
+
+    // The merchant should have received four payments in total
+    assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount) * 4);
+
+    // Should revert if the payments amount has been reached again
+
+    // Fast forward 30 days
+    vm.warp(block.timestamp + 30 days);
+
+    vm.expectRevert(IGrateful.Grateful_PaymentsAmountReached.selector);
+    _grateful.processSubscription(subscriptionId);
+
+    // Now, test cancellation by the sender
+
+    // Sender cancels the subscription
+    vm.prank(_usdcWhale);
+    _grateful.cancelSubscription(subscriptionId);
+
+    // Attempt to process the subscription after cancellation
+    vm.warp(block.timestamp + 30 days);
+    vm.expectRevert(IGrateful.Grateful_SubscriptionDoesNotExist.selector);
     _grateful.processSubscription(subscriptionId);
   }
 
@@ -207,8 +266,9 @@ contract IntegrationGreeter is IntegrationBase {
     // 2. Subscribe to a plan
     vm.startPrank(_usdcWhale);
     _usdc.approve(address(_grateful), _amount * 2);
+
     uint256 subscriptionId =
-      _grateful.subscribe(address(_usdc), _merchant, _amount, 30 days, 2, recipients, percentages);
+      _grateful.subscribe(address(_usdc), _merchant, _amount, _subscriptionPlanId, 30 days, 2, recipients, percentages);
     vm.stopPrank();
 
     // 3. Calculate expected amounts after fee

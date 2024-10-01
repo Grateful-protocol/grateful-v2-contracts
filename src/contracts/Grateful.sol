@@ -52,7 +52,9 @@ contract Grateful is IGrateful, Ownable2Step {
                                 MODIFIERS
     //////////////////////////////////////////////////////////////*/
 
-  modifier onlyWhenTokenWhitelisted(address _token) {
+  modifier onlyWhenTokenWhitelisted(
+    address _token
+  ) {
     if (!tokensWhitelisted[_token]) {
       revert Grateful_TokenNotWhitelisted();
     }
@@ -93,7 +95,9 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   /// @inheritdoc IGrateful
-  function applyFee(uint256 amount) public view returns (uint256) {
+  function applyFee(
+    uint256 amount
+  ) public view returns (uint256) {
     uint256 feeAmount = (amount * fee) / 10_000;
     return amount - feeAmount;
   }
@@ -103,7 +107,9 @@ contract Grateful is IGrateful, Ownable2Step {
     //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IGrateful
-  function addToken(address _token) external onlyOwner {
+  function addToken(
+    address _token
+  ) external onlyOwner {
     tokensWhitelisted[_token] = true;
     IERC20(_token).approve(address(aavePool), type(uint256).max);
   }
@@ -159,6 +165,7 @@ contract Grateful is IGrateful, Ownable2Step {
     address _token,
     address _receiver,
     uint256 _amount,
+    uint256 _subscriptionPlanId,
     uint40 _interval,
     uint16 _paymentsAmount,
     address[] memory _recipients,
@@ -175,6 +182,7 @@ contract Grateful is IGrateful, Ownable2Step {
     subscription.token = _token;
     subscription.sender = msg.sender;
     subscription.amount = _amount;
+    subscription.subscriptionPlanId = _subscriptionPlanId;
     subscription.receiver = _receiver;
     subscription.interval = _interval;
     subscription.paymentsAmount = _paymentsAmount - 1;
@@ -185,6 +193,8 @@ contract Grateful is IGrateful, Ownable2Step {
     // Precompute paymentId
     uint256 paymentId = calculateId(msg.sender, _receiver, _token, _amount);
 
+    emit SubscriptionCreated(subscriptionId, msg.sender, _receiver, _amount, _subscriptionPlanId);
+
     // Call _processPayment
     _processPayment(msg.sender, _receiver, _token, _amount, paymentId, subscriptionId, _recipients, _percentages);
   }
@@ -194,14 +204,19 @@ contract Grateful is IGrateful, Ownable2Step {
     address _token,
     address _receiver,
     uint256 _amount,
+    uint256 _subscriptionPlanId,
     uint40 _interval,
     uint16 _paymentsAmount
   ) external onlyWhenTokenWhitelisted(_token) returns (uint256 subscriptionId) {
-    return subscribe(_token, _receiver, _amount, _interval, _paymentsAmount, new address[](0), new uint256[](0));
+    return subscribe(
+      _token, _receiver, _amount, _subscriptionPlanId, _interval, _paymentsAmount, new address[](0), new uint256[](0)
+    );
   }
 
   /// @inheritdoc IGrateful
-  function processSubscription(uint256 subscriptionId) external {
+  function processSubscription(
+    uint256 subscriptionId
+  ) external {
     Subscription storage subscription = subscriptions[subscriptionId];
 
     if (subscription.amount == 0) {
@@ -226,6 +241,36 @@ contract Grateful is IGrateful, Ownable2Step {
     );
     subscription.lastPaymentTime = uint40(block.timestamp);
     subscription.paymentsAmount--;
+  }
+
+  /// @inheritdoc IGrateful
+  function extendSubscription(uint256 subscriptionId, uint16 additionalPayments) external {
+    Subscription storage subscription = subscriptions[subscriptionId];
+
+    if (subscription.amount == 0) {
+      revert Grateful_SubscriptionDoesNotExist();
+    }
+    if (subscription.sender != msg.sender) {
+      revert Grateful_OnlySenderCanExtendSubscription();
+    }
+
+    subscription.paymentsAmount += additionalPayments;
+  }
+
+  /// @inheritdoc IGrateful
+  function cancelSubscription(
+    uint256 subscriptionId
+  ) external {
+    Subscription storage subscription = subscriptions[subscriptionId];
+
+    if (subscription.amount == 0) {
+      revert Grateful_SubscriptionDoesNotExist();
+    }
+    if (subscription.sender != msg.sender && subscription.receiver != msg.sender) {
+      revert Grateful_OnlySenderOrReceiverCanCancelSubscription();
+    }
+
+    delete subscriptions[subscriptionId];
   }
 
   /// @inheritdoc IGrateful
@@ -324,7 +369,9 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   /// @inheritdoc IGrateful
-  function withdraw(address _token) external onlyWhenTokenWhitelisted(_token) {
+  function withdraw(
+    address _token
+  ) external onlyWhenTokenWhitelisted(_token) {
     AaveV3ERC4626 vault = vaults[_token];
     if (address(vault) == address(0)) {
       revert Grateful_VaultNotSet();
@@ -335,26 +382,14 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   /// @inheritdoc IGrateful
-  function cancelSubscription(uint256 subscriptionId) external {
-    Subscription storage subscription = subscriptions[subscriptionId];
-
-    if (subscription.amount == 0) {
-      revert Grateful_SubscriptionDoesNotExist();
-    }
-    if (subscription.sender != msg.sender) {
-      revert Grateful_OnlySenderCanCancelSubscription();
-    }
-
-    delete subscriptions[subscriptionId];
-  }
-
-  /// @inheritdoc IGrateful
   function switchYieldingFunds() external {
     yieldingFunds[msg.sender] = !yieldingFunds[msg.sender];
   }
 
   /// @inheritdoc IGrateful
-  function setFee(uint256 _newFee) external onlyOwner {
+  function setFee(
+    uint256 _newFee
+  ) external onlyOwner {
     fee = _newFee;
   }
 

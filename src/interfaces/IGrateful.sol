@@ -17,6 +17,7 @@ interface IGrateful {
     address token;
     address sender;
     uint256 amount;
+    uint256 subscriptionPlanId;
     address receiver;
     uint40 interval;
     uint16 paymentsAmount;
@@ -66,6 +67,14 @@ interface IGrateful {
    */
   event OneTimePaymentCreated(address indexed merchant, address indexed token, uint256 amount);
 
+  event SubscriptionCreated(
+    uint256 indexed subscriptionId,
+    address indexed sender,
+    address indexed receiver,
+    uint256 amount,
+    uint256 subscriptionPlanId
+  );
+
   /*///////////////////////////////////////////////////////////////
                                 ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -97,8 +106,11 @@ interface IGrateful {
   /// @notice Thrown when the one-time payment is not found.
   error Grateful_OneTimeNotFound();
 
-  /// @notice Thrown when only the sender can cancel the subscription.
-  error Grateful_OnlySenderCanCancelSubscription();
+  /// @notice Thrown when only the sender or receiver can cancel the subscription.
+  error Grateful_OnlySenderOrReceiverCanCancelSubscription();
+
+  /// @notice Thrown when only the sender can extend subscription.
+  error Grateful_OnlySenderCanExtendSubscription();
 
   /*///////////////////////////////////////////////////////////////
                                VARIABLES
@@ -110,17 +122,23 @@ interface IGrateful {
   /// @notice Checks if a token is whitelisted.
   /// @param _token Address of the token.
   /// @return True if the token is whitelisted, false otherwise.
-  function tokensWhitelisted(address _token) external view returns (bool);
+  function tokensWhitelisted(
+    address _token
+  ) external view returns (bool);
 
   /// @notice Returns the yielding preference of a merchant.
   /// @param _merchant Address of the merchant.
   /// @return True if the merchant prefers yielding funds, false otherwise.
-  function yieldingFunds(address _merchant) external view returns (bool);
+  function yieldingFunds(
+    address _merchant
+  ) external view returns (bool);
 
   /// @notice Returns the vault associated with a token.
   /// @param _token Address of the token.
   /// @return Address of the vault contract.
-  function vaults(address _token) external view returns (AaveV3ERC4626);
+  function vaults(
+    address _token
+  ) external view returns (AaveV3ERC4626);
 
   /// @notice Returns the amount of shares for a merchant.
   /// @param _merchant Address of the merchant.
@@ -131,7 +149,9 @@ interface IGrateful {
   /// @notice Checks if an address is a registered one-time payment.
   /// @param _address Address to check.
   /// @return True if it's a registered one-time payment, false otherwise.
-  function oneTimePayments(address _address) external view returns (bool);
+  function oneTimePayments(
+    address _address
+  ) external view returns (bool);
 
   /// @notice Returns the total number of subscriptions.
   /// @return Number of subscriptions.
@@ -149,7 +169,9 @@ interface IGrateful {
    * @notice Adds a token to the whitelist.
    * @param _token Address of the token to be added.
    */
-  function addToken(address _token) external;
+  function addToken(
+    address _token
+  ) external;
 
   /**
    * @notice Adds a vault for a specific token.
@@ -200,6 +222,7 @@ interface IGrateful {
     address _token,
     address _receiver,
     uint256 _amount,
+    uint256 _subscriptionPlanId,
     uint40 _interval,
     uint16 _paymentsAmount,
     address[] calldata _recipients,
@@ -219,15 +242,24 @@ interface IGrateful {
     address _token,
     address _receiver,
     uint256 _amount,
+    uint256 _subscriptionPlanId,
     uint40 _interval,
     uint16 _paymentsAmount
   ) external returns (uint256 subscriptionId);
+
+  function cancelSubscription(
+    uint256 subscriptionId
+  ) external;
+
+  function extendSubscription(uint256 subscriptionId, uint16 additionalPayments) external;
 
   /**
    * @notice Processes a subscription payment.
    * @param subscriptionId ID of the subscription.
    */
-  function processSubscription(uint256 subscriptionId) external;
+  function processSubscription(
+    uint256 subscriptionId
+  ) external;
 
   /**
    * @notice Creates a one-time payment.
@@ -338,13 +370,9 @@ interface IGrateful {
    * @notice Withdraws funds from the vault.
    * @param _token Address of the token being withdrawn.
    */
-  function withdraw(address _token) external;
-
-  /**
-   * @notice Cancels a subscription.
-   * @param subscriptionId ID of the subscription to be cancelled.
-   */
-  function cancelSubscription(uint256 subscriptionId) external;
+  function withdraw(
+    address _token
+  ) external;
 
   /**
    * @notice Toggles the merchant's preference to yield funds.
@@ -371,11 +399,15 @@ interface IGrateful {
    * @param amount Amount before fee.
    * @return amountWithFee Amount after fee is applied.
    */
-  function applyFee(uint256 amount) external view returns (uint256 amountWithFee);
+  function applyFee(
+    uint256 amount
+  ) external view returns (uint256 amountWithFee);
 
   /**
    * @notice Sets a new fee.
    * @param _newFee New fee to be applied (in basis points, 10000 = 100%).
    */
-  function setFee(uint256 _newFee) external;
+  function setFee(
+    uint256 _newFee
+  ) external;
 }

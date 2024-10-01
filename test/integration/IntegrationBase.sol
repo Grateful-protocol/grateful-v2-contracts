@@ -27,6 +27,7 @@ contract IntegrationBase is Test {
   IGrateful internal _grateful;
   AaveV3Vault internal _vault;
   uint256 internal _amount = 10 * 10 ** 6; // 10 DAI
+  uint256 internal _subscriptionPlanId = 0;
   uint256 internal _fee = 100;
 
   function setUp() public {
