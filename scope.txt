@@ -1,0 +1,2 @@
+src/contracts/*.sol
+src/contracts/vaults/*.sol
