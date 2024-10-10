@@ -11,32 +11,6 @@ import {AaveV3ERC4626, IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
  * @notice Interface for the Grateful contract that allows payments in whitelisted tokens with optional yield via AAVE.
  */
 interface IGrateful {
-  /*//////////////////////////////////////////////////////////////
-                               STRUCTS
-    //////////////////////////////////////////////////////////////*/
-
-  struct Subscription {
-    address token;
-    address sender;
-    uint256 amount;
-    uint256 subscriptionPlanId;
-    address receiver;
-    uint40 interval;
-    uint16 paymentsAmount;
-    uint40 lastPaymentTime;
-    address[] recipients;
-    uint256[] percentages;
-  }
-
-  struct PaymentDetails {
-    address merchant;
-    address token;
-    uint256 amount;
-    uint256 id;
-    address[] recipients;
-    uint256[] percentages;
-  }
-
   /*///////////////////////////////////////////////////////////////
                                 EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -48,8 +22,7 @@ interface IGrateful {
    * @param token Address of the token.
    * @param amount Amount of the token.
    * @param yielded Indicates if the payment was yielded.
-   * @param paymentId ID of the payment.
-   * @param subscriptionId ID of the subscription.
+   * @param paymentId ID of the payment
    */
   event PaymentProcessed(
     address indexed sender,
@@ -57,8 +30,7 @@ interface IGrateful {
     address indexed token,
     uint256 amount,
     bool yielded,
-    uint256 paymentId,
-    uint256 subscriptionId
+    uint256 paymentId
   );
 
   /**
@@ -68,14 +40,6 @@ interface IGrateful {
    * @param amount Amount of the token.
    */
   event OneTimePaymentCreated(address indexed merchant, address[] indexed tokens, uint256 amount);
-
-  event SubscriptionCreated(
-    uint256 indexed subscriptionId,
-    address indexed sender,
-    address indexed receiver,
-    uint256 amount,
-    uint256 subscriptionPlanId
-  );
 
   /*///////////////////////////////////////////////////////////////
                                 ERRORS
@@ -96,23 +60,8 @@ interface IGrateful {
   /// @notice Thrown when a token transfer fails.
   error Grateful_TransferFailed();
 
-  /// @notice Thrown when the subscription does not exist.
-  error Grateful_SubscriptionDoesNotExist();
-
-  /// @notice Thrown when it's too early for the next subscription payment.
-  error Grateful_TooEarlyForNextPayment();
-
-  /// @notice Thrown when the maximum number of payments has been reached.
-  error Grateful_PaymentsAmountReached();
-
   /// @notice Thrown when the one-time payment is not found.
   error Grateful_OneTimeNotFound();
-
-  /// @notice Thrown when only the sender or receiver can cancel the subscription.
-  error Grateful_OnlySenderOrReceiverCanCancelSubscription();
-
-  /// @notice Thrown when only the sender can extend subscription.
-  error Grateful_OnlySenderCanExtendSubscription();
 
   /*///////////////////////////////////////////////////////////////
                                VARIABLES
@@ -154,10 +103,6 @@ interface IGrateful {
   function oneTimePayments(
     address _address
   ) external view returns (bool);
-
-  /// @notice Returns the total number of subscriptions.
-  /// @return Number of subscriptions.
-  function subscriptionCount() external view returns (uint256);
 
   /// @notice Returns the fee applied to the payments.
   /// @return Fee in basis points (10000 = 100%).
@@ -207,60 +152,6 @@ interface IGrateful {
     uint256 _id,
     address[] calldata _recipients,
     uint256[] calldata _percentages
-  ) external;
-
-  /**
-   * @notice Subscribes to a service with recurring payments.
-   * @param _token Address of the token.
-   * @param _receiver Address of the payment receiver.
-   * @param _amount Amount per payment.
-   * @param _interval Interval in seconds between payments.
-   * @param _paymentsAmount Total number of payments.
-   * @param _recipients List of recipients for payment splitting.
-   * @param _percentages Corresponding percentages for each recipient.
-   * @return subscriptionId ID of the created subscription.
-   */
-  function subscribe(
-    address _token,
-    address _receiver,
-    uint256 _amount,
-    uint256 _subscriptionPlanId,
-    uint40 _interval,
-    uint16 _paymentsAmount,
-    address[] calldata _recipients,
-    uint256[] calldata _percentages
-  ) external returns (uint256 subscriptionId);
-
-  /**
-   * @notice Subscribes to a service with recurring payments.
-   * @param _token Address of the token.
-   * @param _receiver Address of the payment receiver.
-   * @param _amount Amount per payment.
-   * @param _interval Interval in seconds between payments.
-   * @param _paymentsAmount Total number of payments.
-   * @return subscriptionId ID of the created subscription.
-   */
-  function subscribe(
-    address _token,
-    address _receiver,
-    uint256 _amount,
-    uint256 _subscriptionPlanId,
-    uint40 _interval,
-    uint16 _paymentsAmount
-  ) external returns (uint256 subscriptionId);
-
-  function cancelSubscription(
-    uint256 subscriptionId
-  ) external;
-
-  function extendSubscription(uint256 subscriptionId, uint16 additionalPayments) external;
-
-  /**
-   * @notice Processes a subscription payment.
-   * @param subscriptionId ID of the subscription.
-   */
-  function processSubscription(
-    uint256 subscriptionId
   ) external;
 
   /**

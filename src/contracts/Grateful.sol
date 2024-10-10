@@ -39,13 +39,8 @@ contract Grateful is IGrateful, Ownable2Step {
   /// @inheritdoc IGrateful
   mapping(address => mapping(address => uint256)) public shares;
 
-  mapping(uint256 => Subscription) public subscriptions;
-
   /// @inheritdoc IGrateful
   mapping(address => bool) public oneTimePayments;
-
-  /// @inheritdoc IGrateful
-  uint256 public subscriptionCount;
 
   /// @inheritdoc IGrateful
   uint256 public fee;
@@ -140,16 +135,7 @@ contract Grateful is IGrateful, Ownable2Step {
     uint256 _amount,
     uint256 _id
   ) external onlyWhenTokenWhitelisted(_token) {
-    _processPayment(
-      msg.sender,
-      _merchant,
-      _token,
-      _amount,
-      _id,
-      0, // 0 because no subscription is involved
-      new address[](0),
-      new uint256[](0)
-    );
+    _processPayment(msg.sender, _merchant, _token, _amount, _id, new address[](0), new uint256[](0));
   }
 
   /// @inheritdoc IGrateful
@@ -161,129 +147,7 @@ contract Grateful is IGrateful, Ownable2Step {
     address[] calldata _recipients,
     uint256[] calldata _percentages
   ) external onlyWhenTokenWhitelisted(_token) {
-    _processPayment(
-      msg.sender,
-      _merchant,
-      _token,
-      _amount,
-      _id,
-      0, // 0 because no subscription is involved
-      _recipients,
-      _percentages
-    );
-  }
-
-  /// @inheritdoc IGrateful
-  function subscribe(
-    address _token,
-    address _receiver,
-    uint256 _amount,
-    uint256 _subscriptionPlanId,
-    uint40 _interval,
-    uint16 _paymentsAmount,
-    address[] memory _recipients,
-    uint256[] memory _percentages
-  ) public onlyWhenTokenWhitelisted(_token) returns (uint256 subscriptionId) {
-    if (_recipients.length != _percentages.length) {
-      revert Grateful_MismatchedArrays();
-    }
-
-    subscriptionId = subscriptionCount++;
-
-    // Store the subscription details
-    Subscription storage subscription = subscriptions[subscriptionId];
-    subscription.token = _token;
-    subscription.sender = msg.sender;
-    subscription.amount = _amount;
-    subscription.subscriptionPlanId = _subscriptionPlanId;
-    subscription.receiver = _receiver;
-    subscription.interval = _interval;
-    subscription.paymentsAmount = _paymentsAmount - 1;
-    subscription.lastPaymentTime = uint40(block.timestamp);
-    subscription.recipients = _recipients;
-    subscription.percentages = _percentages;
-
-    // Precompute paymentId
-    uint256 paymentId = calculateId(msg.sender, _receiver, _token, _amount);
-
-    emit SubscriptionCreated(subscriptionId, msg.sender, _receiver, _amount, _subscriptionPlanId);
-
-    // Call _processPayment
-    _processPayment(msg.sender, _receiver, _token, _amount, paymentId, subscriptionId, _recipients, _percentages);
-  }
-
-  /// @inheritdoc IGrateful
-  function subscribe(
-    address _token,
-    address _receiver,
-    uint256 _amount,
-    uint256 _subscriptionPlanId,
-    uint40 _interval,
-    uint16 _paymentsAmount
-  ) external onlyWhenTokenWhitelisted(_token) returns (uint256 subscriptionId) {
-    return subscribe(
-      _token, _receiver, _amount, _subscriptionPlanId, _interval, _paymentsAmount, new address[](0), new uint256[](0)
-    );
-  }
-
-  /// @inheritdoc IGrateful
-  function processSubscription(
-    uint256 subscriptionId
-  ) external {
-    Subscription storage subscription = subscriptions[subscriptionId];
-
-    if (subscription.amount == 0) {
-      revert Grateful_SubscriptionDoesNotExist();
-    }
-    if (block.timestamp < subscription.lastPaymentTime + subscription.interval) {
-      revert Grateful_TooEarlyForNextPayment();
-    }
-    if (subscription.paymentsAmount == 0) {
-      revert Grateful_PaymentsAmountReached();
-    }
-
-    _processPayment(
-      subscription.sender,
-      subscription.receiver,
-      subscription.token,
-      subscription.amount,
-      calculateId(subscription.sender, subscription.receiver, subscription.token, subscription.amount),
-      subscriptionId,
-      subscription.recipients,
-      subscription.percentages
-    );
-    subscription.lastPaymentTime = uint40(block.timestamp);
-    subscription.paymentsAmount--;
-  }
-
-  /// @inheritdoc IGrateful
-  function extendSubscription(uint256 subscriptionId, uint16 additionalPayments) external {
-    Subscription storage subscription = subscriptions[subscriptionId];
-
-    if (subscription.amount == 0) {
-      revert Grateful_SubscriptionDoesNotExist();
-    }
-    if (subscription.sender != msg.sender) {
-      revert Grateful_OnlySenderCanExtendSubscription();
-    }
-
-    subscription.paymentsAmount += additionalPayments;
-  }
-
-  /// @inheritdoc IGrateful
-  function cancelSubscription(
-    uint256 subscriptionId
-  ) external {
-    Subscription storage subscription = subscriptions[subscriptionId];
-
-    if (subscription.amount == 0) {
-      revert Grateful_SubscriptionDoesNotExist();
-    }
-    if (subscription.sender != msg.sender && subscription.receiver != msg.sender) {
-      revert Grateful_OnlySenderOrReceiverCanCancelSubscription();
-    }
-
-    delete subscriptions[subscriptionId];
+    _processPayment(msg.sender, _merchant, _token, _amount, _id, _recipients, _percentages);
   }
 
   /// @inheritdoc IGrateful
@@ -316,7 +180,7 @@ contract Grateful is IGrateful, Ownable2Step {
     if (!oneTimePayments[msg.sender]) {
       revert Grateful_OneTimeNotFound();
     }
-    _processPayment(msg.sender, _merchant, _token, _amount, _paymentId, 0, _recipients, _percentages);
+    _processPayment(msg.sender, _merchant, _token, _amount, _paymentId, _recipients, _percentages);
   }
 
   /// @inheritdoc IGrateful
@@ -368,7 +232,7 @@ contract Grateful is IGrateful, Ownable2Step {
     for (uint256 i = 0; i < _tokens.length; i++) {
       if (_tokens[i].balanceOf(msg.sender) >= _amount) {
         _processPayment(
-          msg.sender, _merchant, address(_tokens[i]), _amount, _paymentId, 0, new address[](0), new uint256[](0)
+          msg.sender, _merchant, address(_tokens[i]), _amount, _paymentId, new address[](0), new uint256[](0)
         );
       }
     }
@@ -427,8 +291,7 @@ contract Grateful is IGrateful, Ownable2Step {
    * @param _merchant Address of the merchant.
    * @param _token Address of the token.
    * @param _amount Amount of the token.
-   * @param _paymentId ID of the payment.
-   * @param _subscriptionId ID of the subscription, 0 if it is one-time.
+   * @param _paymentId ID of the payment
    * @param _recipients List of recipients for payment splitting.
    * @param _percentages Corresponding percentages for each recipient.
    */
@@ -438,7 +301,6 @@ contract Grateful is IGrateful, Ownable2Step {
     address _token,
     uint256 _amount,
     uint256 _paymentId,
-    uint256 _subscriptionId,
     address[] memory _recipients,
     uint256[] memory _percentages
   ) internal {
@@ -504,6 +366,6 @@ contract Grateful is IGrateful, Ownable2Step {
       }
     }
 
-    emit PaymentProcessed(_sender, _merchant, _token, _amount, yieldingFunds[_merchant], _paymentId, _subscriptionId);
+    emit PaymentProcessed(_sender, _merchant, _token, _amount, yieldingFunds[_merchant], _paymentId);
   }
 }
