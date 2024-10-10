@@ -2,6 +2,8 @@
 pragma solidity 0.8.26;
 
 import {OneTime} from "contracts/OneTime.sol";
+
+import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {AaveV3ERC4626, IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
 /**
@@ -62,10 +64,10 @@ interface IGrateful {
   /**
    * @notice Emitted when a one-time payment is created.
    * @param merchant Address of the merchant.
-   * @param token Address of the token.
+   * @param tokens Address of the token.
    * @param amount Amount of the token.
    */
-  event OneTimePaymentCreated(address indexed merchant, address indexed token, uint256 amount);
+  event OneTimePaymentCreated(address indexed merchant, address[] indexed tokens, uint256 amount);
 
   event SubscriptionCreated(
     uint256 indexed subscriptionId,
@@ -264,7 +266,7 @@ interface IGrateful {
   /**
    * @notice Creates a one-time payment.
    * @param _merchant Address of the merchant.
-   * @param _token Address of the token.
+   * @param _tokens Address of the token.
    * @param _amount Amount of the token.
    * @param _salt Salt used for address computation.
    * @param _paymentId ID of the payment.
@@ -273,7 +275,7 @@ interface IGrateful {
    */
   function createOneTimePayment(
     address _merchant,
-    address _token,
+    address[] memory _tokens,
     uint256 _amount,
     uint256 _salt,
     uint256 _paymentId,
@@ -285,7 +287,7 @@ interface IGrateful {
   /**
    * @notice Creates a one-time payment without recipients and percentages.
    * @param _merchant Address of the merchant.
-   * @param _token Address of the token.
+   * @param _tokens Address of the token.
    * @param _amount Amount of the token.
    * @param _salt Salt used for address computation.
    * @param _paymentId ID of the payment.
@@ -294,7 +296,7 @@ interface IGrateful {
    */
   function createOneTimePayment(
     address _merchant,
-    address _token,
+    address[] memory _tokens,
     uint256 _amount,
     uint256 _salt,
     uint256 _paymentId,
@@ -322,16 +324,21 @@ interface IGrateful {
   /**
    * @notice Receives a one-time payment without recipients and percentages.
    * @param _merchant Address of the merchant.
-   * @param _token Address of the token.
+   * @param _tokens Address of the token.
    * @param _paymentId ID of the payment.
    * @param _amount Amount of the token.
    */
-  function receiveOneTimePayment(address _merchant, address _token, uint256 _paymentId, uint256 _amount) external;
+  function receiveOneTimePayment(
+    address _merchant,
+    IERC20[] memory _tokens,
+    uint256 _paymentId,
+    uint256 _amount
+  ) external;
 
   /**
    * @notice Computes the address of a one-time payment contract.
    * @param _merchant Address of the merchant.
-   * @param _token Address of the token.
+   * @param _tokens Address of the token.
    * @param _amount Amount of the token.
    * @param _salt Salt used for address computation.
    * @param _paymentId ID of the payment.
@@ -341,7 +348,7 @@ interface IGrateful {
    */
   function computeOneTimeAddress(
     address _merchant,
-    address _token,
+    address[] memory _tokens,
     uint256 _amount,
     uint256 _salt,
     uint256 _paymentId,
@@ -352,7 +359,7 @@ interface IGrateful {
   /**
    * @notice Computes the address of a one-time payment contract without recipients and percentages.
    * @param _merchant Address of the merchant.
-   * @param _token Address of the token.
+   * @param _tokens Address of the token.
    * @param _amount Amount of the token.
    * @param _salt Salt used for address computation.
    * @param _paymentId ID of the payment.
@@ -360,7 +367,7 @@ interface IGrateful {
    */
   function computeOneTimeAddress(
     address _merchant,
-    address _token,
+    address[] memory _tokens,
     uint256 _amount,
     uint256 _salt,
     uint256 _paymentId

@@ -131,7 +131,7 @@ contract IntegrationGreeter is IntegrationBase {
     uint256 paymentId = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
 
     // 2. Precompute address
-    address precomputed = address(_grateful.computeOneTimeAddress(_merchant, address(_usdc), _amount, 4, paymentId));
+    address precomputed = address(_grateful.computeOneTimeAddress(_merchant, _tokens, _amount, 4, paymentId));
 
     // 3. Once the payment address is precomputed, the client sends the payment
     vm.prank(_usdcWhale);
@@ -139,18 +139,21 @@ contract IntegrationGreeter is IntegrationBase {
 
     // 4. Merchant calls api to make one time payment to his address
     vm.prank(_gratefulAutomation);
-    _grateful.createOneTimePayment(_merchant, address(_usdc), _amount, 4, paymentId, precomputed);
+    _grateful.createOneTimePayment(_merchant, _tokens, _amount, 4, paymentId, precomputed);
 
     // Merchant receives the payment
     assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount));
   }
 
   function test_OneTimePaymentYieldingFunds() public {
+    address[] memory _tokens2 = new address[](1);
+    _tokens2[0] = _tokens[0];
+
     // 1. Calculate payment id
     uint256 paymentId = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
 
     // 2. Precompute address
-    address precomputed = address(_grateful.computeOneTimeAddress(_merchant, address(_usdc), _amount, 4, paymentId));
+    address precomputed = address(_grateful.computeOneTimeAddress(_merchant, _tokens, _amount, 4, paymentId));
 
     // 3. Once the payment address is precomputed, the client sends the payment
     vm.prank(_usdcWhale);
@@ -162,7 +165,7 @@ contract IntegrationGreeter is IntegrationBase {
 
     // 5. Grateful automation calls api to make one time payment to his address
     vm.prank(_gratefulAutomation);
-    _grateful.createOneTimePayment(_merchant, address(_usdc), _amount, 4, paymentId, precomputed);
+    _grateful.createOneTimePayment(_merchant, _tokens, _amount, 4, paymentId, precomputed);
     // 6. Advance time
     vm.warp(block.timestamp + 1 days);
 
@@ -225,9 +228,8 @@ contract IntegrationGreeter is IntegrationBase {
     uint256 paymentId = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
 
     // 3. Precompute address
-    address precomputed = address(
-      _grateful.computeOneTimeAddress(_merchant, address(_usdc), _amount, 4, paymentId, recipients, percentages)
-    );
+    address precomputed =
+      address(_grateful.computeOneTimeAddress(_merchant, _tokens, _amount, 4, paymentId, recipients, percentages));
 
     // 4. Once the payment address is precomputed, the client sends the payment
     vm.prank(_usdcWhale);
@@ -235,9 +237,7 @@ contract IntegrationGreeter is IntegrationBase {
 
     // 5. Merchant calls api to make one time payment to his address
     vm.prank(_gratefulAutomation);
-    _grateful.createOneTimePayment(
-      _merchant, address(_usdc), _amount, 4, paymentId, precomputed, recipients, percentages
-    );
+    _grateful.createOneTimePayment(_merchant, _tokens, _amount, 4, paymentId, precomputed, recipients, percentages);
 
     // 6. Calculate expected amounts after fee
     uint256 amountAfterFee = _grateful.applyFee(_amount);

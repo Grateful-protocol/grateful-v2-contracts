@@ -5,6 +5,8 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import {OneTime} from "contracts/OneTime.sol";
+
+import {console} from "forge-std/console.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {IGrateful} from "interfaces/IGrateful.sol";
 
@@ -57,6 +59,17 @@ contract Grateful is IGrateful, Ownable2Step {
   ) {
     if (!tokensWhitelisted[_token]) {
       revert Grateful_TokenNotWhitelisted();
+    }
+    _;
+  }
+
+  modifier onlyWhenTokensWhitelisted(
+    address[] memory _tokens
+  ) {
+    for (uint256 i = 0; i < _tokens.length; i++) {
+      if (!tokensWhitelisted[_tokens[i]]) {
+        revert Grateful_TokenNotWhitelisted();
+      }
     }
     _;
   }
@@ -276,19 +289,19 @@ contract Grateful is IGrateful, Ownable2Step {
   /// @inheritdoc IGrateful
   function createOneTimePayment(
     address _merchant,
-    address _token,
+    address[] memory _tokens,
     uint256 _amount,
     uint256 _salt,
     uint256 _paymentId,
     address precomputed,
     address[] calldata _recipients,
     uint256[] calldata _percentages
-  ) external onlyWhenTokenWhitelisted(_token) returns (OneTime oneTime) {
+  ) external onlyWhenTokensWhitelisted(_tokens) returns (OneTime oneTime) {
     oneTimePayments[precomputed] = true;
     oneTime = new OneTime{salt: bytes32(_salt)}(
-      IGrateful(address(this)), IERC20(_token), _merchant, _amount, _paymentId, _recipients, _percentages
+      IGrateful(address(this)), _tokens, _merchant, _amount, _paymentId, _recipients, _percentages
     );
-    emit OneTimePaymentCreated(_merchant, _token, _amount);
+    emit OneTimePaymentCreated(_merchant, _tokens, _amount);
   }
 
   /// @inheritdoc IGrateful
@@ -309,7 +322,7 @@ contract Grateful is IGrateful, Ownable2Step {
   /// @inheritdoc IGrateful
   function computeOneTimeAddress(
     address _merchant,
-    address _token,
+    address[] memory _tokens,
     uint256 _amount,
     uint256 _salt,
     uint256 _paymentId,
@@ -318,7 +331,7 @@ contract Grateful is IGrateful, Ownable2Step {
   ) external view returns (OneTime oneTime) {
     bytes memory bytecode = abi.encodePacked(
       type(OneTime).creationCode,
-      abi.encode(address(this), _token, _merchant, _amount, _paymentId, _recipients, _percentages)
+      abi.encode(address(this), _tokens, _merchant, _amount, _paymentId, _recipients, _percentages)
     );
     bytes32 bytecodeHash = keccak256(bytecode);
     bytes32 addressHash = keccak256(abi.encodePacked(bytes1(0xff), address(this), bytes32(_salt), bytecodeHash));
@@ -329,38 +342,49 @@ contract Grateful is IGrateful, Ownable2Step {
   /// @inheritdoc IGrateful
   function createOneTimePayment(
     address _merchant,
-    address _token,
+    address[] memory _tokens,
     uint256 _amount,
     uint256 _salt,
     uint256 _paymentId,
     address precomputed
-  ) external onlyWhenTokenWhitelisted(_token) returns (OneTime oneTime) {
+  ) external onlyWhenTokensWhitelisted(_tokens) returns (OneTime oneTime) {
     oneTimePayments[precomputed] = true;
     oneTime = new OneTime{salt: bytes32(_salt)}(
-      IGrateful(address(this)), IERC20(_token), _merchant, _amount, _paymentId, new address[](0), new uint256[](0)
+      IGrateful(address(this)), _tokens, _merchant, _amount, _paymentId, new address[](0), new uint256[](0)
     );
-    emit OneTimePaymentCreated(_merchant, _token, _amount);
+    emit OneTimePaymentCreated(_merchant, _tokens, _amount);
   }
 
   /// @inheritdoc IGrateful
-  function receiveOneTimePayment(address _merchant, address _token, uint256 _paymentId, uint256 _amount) external {
+  function receiveOneTimePayment(
+    address _merchant,
+    IERC20[] memory _tokens,
+    uint256 _paymentId,
+    uint256 _amount
+  ) external {
     if (!oneTimePayments[msg.sender]) {
       revert Grateful_OneTimeNotFound();
     }
-    _processPayment(msg.sender, _merchant, _token, _amount, _paymentId, 0, new address[](0), new uint256[](0));
+    for (uint256 i = 0; i < _tokens.length; i++) {
+      if (_tokens[i].balanceOf(msg.sender) >= _amount) {
+        _processPayment(
+          msg.sender, _merchant, address(_tokens[i]), _amount, _paymentId, 0, new address[](0), new uint256[](0)
+        );
+      }
+    }
   }
 
   /// @inheritdoc IGrateful
   function computeOneTimeAddress(
     address _merchant,
-    address _token,
+    address[] memory _tokens,
     uint256 _amount,
     uint256 _salt,
     uint256 _paymentId
   ) external view returns (OneTime oneTime) {
     bytes memory bytecode = abi.encodePacked(
       type(OneTime).creationCode,
-      abi.encode(address(this), _token, _merchant, _amount, _paymentId, new address[](0), new uint256[](0))
+      abi.encode(address(this), _tokens, _merchant, _amount, _paymentId, new address[](0), new uint256[](0))
     );
     bytes32 bytecodeHash = keccak256(bytecode);
     bytes32 addressHash = keccak256(abi.encodePacked(bytes1(0xff), address(this), bytes32(_salt), bytecodeHash));
