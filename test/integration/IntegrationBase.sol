@@ -21,6 +21,7 @@ contract IntegrationBase is Test {
   address internal _usdcWhale = 0x555d73f2002A457211d690313f942B065eAD1FFF;
   address[] internal _tokens;
   IERC20 internal _usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+  IERC20 internal _usdt = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
   address internal _aUsdc = 0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c;
   address internal _rewardsController = 0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb;
   IPool internal _aavePool = IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2);
@@ -34,8 +35,9 @@ contract IntegrationBase is Test {
     vm.startPrank(_owner);
     vm.createSelectFork(vm.rpcUrl("mainnet"), _FORK_BLOCK);
     vm.label(address(_vault), "Vault");
-    _tokens = new address[](1);
+    _tokens = new address[](2);
     _tokens[0] = address(_usdc);
+    _tokens[1] = address(_usdt);
     _grateful = new Grateful(_tokens, _aavePool, _fee);
     _vault = new AaveV3Vault(
       ERC20(address(_usdc)),
