@@ -115,6 +115,10 @@ contract Grateful is IGrateful, Ownable2Step {
     return _amount - feeAmount;
   }
 
+  function owner() public view override(IGrateful, Ownable) returns (address) {
+    return super.owner();
+  }
+
   /*//////////////////////////////////////////////////////////////
                           EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/

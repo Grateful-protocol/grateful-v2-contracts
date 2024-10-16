@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
+import {OneTime} from "contracts/OneTime.sol";
 import {IGrateful, IntegrationBase} from "test/integration/IntegrationBase.sol";
 
 contract IntegrationGreeter is IntegrationBase {
   function test_Payment() public {
-    vm.startPrank(_usdcWhale);
+    vm.startPrank(_payer);
     _usdc.approve(address(_grateful), _amount);
-    _grateful.pay(
-      _merchant, address(_usdc), _amount, _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount)
-    );
+    _grateful.pay(_merchant, address(_usdc), _amount, _grateful.calculateId(_payer, _merchant, address(_usdc), _amount));
     vm.stopPrank();
 
     assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _amount));
@@ -23,11 +22,9 @@ contract IntegrationGreeter is IntegrationBase {
 
     assertEq(_grateful.yieldingFunds(_merchant), true);
 
-    vm.startPrank(_usdcWhale);
+    vm.startPrank(_payer);
     _usdc.approve(address(_grateful), _amount);
-    _grateful.pay(
-      _merchant, address(_usdc), _amount, _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount)
-    );
+    _grateful.pay(_merchant, address(_usdc), _amount, _grateful.calculateId(_payer, _merchant, address(_usdc), _amount));
     vm.stopPrank();
 
     vm.warp(block.timestamp + 60 days);
@@ -40,13 +37,13 @@ contract IntegrationGreeter is IntegrationBase {
 
   function test_OneTimePayment() public {
     // 1. Calculate payment id
-    uint256 paymentId = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
+    uint256 paymentId = _grateful.calculateId(_payer, _merchant, address(_usdc), _amount);
 
     // 2. Precompute address
     address precomputed = address(_grateful.computeOneTimeAddress(_merchant, _tokens, _amount, 4, paymentId));
 
     // 3. Once the payment address is precomputed, the client sends the payment
-    vm.prank(_usdcWhale);
+    vm.prank(_payer);
     _usdc.transfer(precomputed, _amount); // Only tx sent by the client, doesn't need contract interaction
 
     // 4. Merchant calls api to make one time payment to his address
@@ -57,6 +54,37 @@ contract IntegrationGreeter is IntegrationBase {
     assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _amount));
   }
 
+  function test_OverpaidOneTimePayment() public {
+    // 1. Calculate payment id
+    uint256 paymentId = _grateful.calculateId(_payer, _merchant, address(_usdc), _amount);
+
+    // 2. Precompute address
+    address precomputed = address(_grateful.computeOneTimeAddress(_merchant, _tokens, _amount, 4, paymentId));
+
+    // 3. Once the payment address is precomputed, the client sends the payment
+    vm.prank(_payer);
+    _usdc.transfer(precomputed, _amount * 2); // Only tx sent by the client, doesn't need contract interaction
+
+    // 4. Merchant calls api to make one time payment to his address
+    vm.prank(_gratefulAutomation);
+    OneTime _oneTime = _grateful.createOneTimePayment(_merchant, _tokens, _amount, 4, paymentId, precomputed);
+
+    // Merchant receives the payment
+    assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _amount));
+
+    // There are funds in the onetime contract stucked
+    assertEq(_usdc.balanceOf(address(_oneTime)), _amount);
+
+    uint256 prevWhaleBalance = _usdc.balanceOf(_payer);
+
+    // Rescue funds
+    vm.prank(_owner);
+    _oneTime.rescueFunds(address(_usdc), _payer, _amount);
+
+    // Client has received his funds
+    assertEq(_usdc.balanceOf(address(_payer)), prevWhaleBalance + _amount);
+  }
+
   function test_PaymentWithCustomFee() public {
     // ------------------------------
     // 1. Set custom fee of 2% (200 basis points) for the merchant
@@ -65,9 +93,9 @@ contract IntegrationGreeter is IntegrationBase {
     _grateful.setCustomFee(200, _merchant);
 
     // Process payment with custom fee of 2%
-    vm.startPrank(_usdcWhale);
+    vm.startPrank(_payer);
     _usdc.approve(address(_grateful), _amount);
-    uint256 paymentId1 = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
+    uint256 paymentId1 = _grateful.calculateId(_payer, _merchant, address(_usdc), _amount);
     _grateful.pay(_merchant, address(_usdc), _amount, paymentId1);
     vm.stopPrank();
 
@@ -86,9 +114,9 @@ contract IntegrationGreeter is IntegrationBase {
     _grateful.setCustomFee(0, _merchant);
 
     // Process payment with custom fee of 0%
-    vm.startPrank(_usdcWhale);
+    vm.startPrank(_payer);
     _usdc.approve(address(_grateful), _amount);
-    uint256 paymentId2 = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
+    uint256 paymentId2 = _grateful.calculateId(_payer, _merchant, address(_usdc), _amount);
     _grateful.pay(_merchant, address(_usdc), _amount, paymentId2);
     vm.stopPrank();
 
@@ -113,9 +141,9 @@ contract IntegrationGreeter is IntegrationBase {
     _grateful.unsetCustomFee(_merchant);
 
     // Process payment after unsetting custom fee
-    vm.startPrank(_usdcWhale);
+    vm.startPrank(_payer);
     _usdc.approve(address(_grateful), _amount);
-    uint256 paymentId3 = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
+    uint256 paymentId3 = _grateful.calculateId(_payer, _merchant, address(_usdc), _amount);
     _grateful.pay(_merchant, address(_usdc), _amount, paymentId3);
     vm.stopPrank();
 
@@ -141,13 +169,13 @@ contract IntegrationGreeter is IntegrationBase {
     _tokens2[0] = _tokens[0];
 
     // 1. Calculate payment id
-    uint256 paymentId = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
+    uint256 paymentId = _grateful.calculateId(_payer, _merchant, address(_usdc), _amount);
 
     // 2. Precompute address
     address precomputed = address(_grateful.computeOneTimeAddress(_merchant, _tokens, _amount, 4, paymentId));
 
     // 3. Once the payment address is precomputed, the client sends the payment
-    vm.prank(_usdcWhale);
+    vm.prank(_payer);
     _usdc.transfer(precomputed, _amount);
 
     // 4. Set merchant to yield funds
@@ -184,11 +212,11 @@ contract IntegrationGreeter is IntegrationBase {
     percentages[1] = 3000; // 30%
 
     // 2. Approve Grateful contract to spend USDC
-    vm.startPrank(_usdcWhale);
+    vm.startPrank(_payer);
     _usdc.approve(address(_grateful), _amount);
 
     // 3. Make a payment with splitting
-    uint256 paymentId = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
+    uint256 paymentId = _grateful.calculateId(_payer, _merchant, address(_usdc), _amount);
 
     _grateful.pay(_merchant, address(_usdc), _amount, paymentId, recipients, percentages);
     vm.stopPrank();
@@ -217,14 +245,14 @@ contract IntegrationGreeter is IntegrationBase {
     percentages[1] = 3000; // 30%
 
     // 2. Calculate payment id
-    uint256 paymentId = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
+    uint256 paymentId = _grateful.calculateId(_payer, _merchant, address(_usdc), _amount);
 
     // 3. Precompute address
     address precomputed =
       address(_grateful.computeOneTimeAddress(_merchant, _tokens, _amount, 4, paymentId, recipients, percentages));
 
     // 4. Once the payment address is precomputed, the client sends the payment
-    vm.prank(_usdcWhale);
+    vm.prank(_payer);
     _usdc.transfer(precomputed, _amount);
 
     // 5. Merchant calls api to make one time payment to his address

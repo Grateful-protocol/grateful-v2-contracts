@@ -18,7 +18,7 @@ contract IntegrationBase is Test {
   address internal _merchant = makeAddr("merchant");
   address internal _owner = makeAddr("owner");
   address internal _gratefulAutomation = makeAddr("gratefulAutomation");
-  address internal _usdcWhale = 0x555d73f2002A457211d690313f942B065eAD1FFF;
+  address internal _payer = 0x555d73f2002A457211d690313f942B065eAD1FFF;
   address[] internal _tokens;
   IERC20 internal _usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
   IERC20 internal _usdt = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);

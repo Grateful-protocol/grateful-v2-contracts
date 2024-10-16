@@ -76,6 +76,9 @@ interface IGrateful {
                                VARIABLES
     //////////////////////////////////////////////////////////////*/
 
+  /// @notice Returns the owner of the contract
+  function owner() external view returns (address);
+
   /// @notice Aave pool for yielding merchants' funds.
   function aavePool() external view returns (IPool);
 
