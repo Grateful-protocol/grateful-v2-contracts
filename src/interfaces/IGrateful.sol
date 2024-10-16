@@ -12,6 +12,15 @@ import {AaveV3ERC4626, IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
  */
 interface IGrateful {
   /*///////////////////////////////////////////////////////////////
+                                STRUCTS
+    //////////////////////////////////////////////////////////////*/
+
+  struct CustomFee {
+    bool isSet;
+    uint256 fee;
+  }
+
+  /*///////////////////////////////////////////////////////////////
                                 EVENTS
     //////////////////////////////////////////////////////////////*/
 
@@ -107,6 +116,13 @@ interface IGrateful {
   /// @notice Returns the fee applied to the payments.
   /// @return Fee in basis points (10000 = 100%).
   function fee() external view returns (uint256);
+
+  /// @notice Returns the custom fee applied to the payments.
+  /// @return isSet If the custom fee has been set.
+  /// @return fee Custom fee
+  function customFees(
+    address _merchant
+  ) external view returns (bool isSet, uint256 fee);
 
   /*///////////////////////////////////////////////////////////////
                                 LOGIC
@@ -294,12 +310,11 @@ interface IGrateful {
 
   /**
    * @notice Applies the fee to an amount.
-   * @param amount Amount before fee.
+   * @param _merchant Address of the merchant.
+   * @param _amount Amount before fee.
    * @return amountWithFee Amount after fee is applied.
    */
-  function applyFee(
-    uint256 amount
-  ) external view returns (uint256 amountWithFee);
+  function applyFee(address _merchant, uint256 _amount) external view returns (uint256 amountWithFee);
 
   /**
    * @notice Sets a new fee.
@@ -307,5 +322,20 @@ interface IGrateful {
    */
   function setFee(
     uint256 _newFee
+  ) external;
+
+  /**
+   * @notice Sets a new fee for a certain merchant.
+   * @param _newFee New fee to be applied (in basis points, 10000 = 100%).
+   * @param _merchant Address of the merchant.
+   */
+  function setCustomFee(uint256 _newFee, address _merchant) external;
+
+  /**
+   * @notice Sets a new fee for a certain merchant.
+   * @param _merchant Address of the merchant.
+   */
+  function unsetCustomFee(
+    address _merchant
   ) external;
 }

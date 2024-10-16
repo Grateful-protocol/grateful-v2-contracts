@@ -12,7 +12,7 @@ contract IntegrationGreeter is IntegrationBase {
     );
     vm.stopPrank();
 
-    assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount));
+    assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _amount));
   }
 
   function test_PaymentYieldingFunds() public {
@@ -35,7 +35,7 @@ contract IntegrationGreeter is IntegrationBase {
     vm.prank(_merchant);
     _grateful.withdraw(address(_usdc));
 
-    assertGt(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount));
+    assertGt(_usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _amount));
   }
 
   function test_OneTimePayment() public {
@@ -54,7 +54,86 @@ contract IntegrationGreeter is IntegrationBase {
     _grateful.createOneTimePayment(_merchant, _tokens, _amount, 4, paymentId, precomputed);
 
     // Merchant receives the payment
-    assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount));
+    assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _amount));
+  }
+
+  function test_PaymentWithCustomFee() public {
+    // ------------------------------
+    // 1. Set custom fee of 2% (200 basis points) for the merchant
+    // ------------------------------
+    vm.prank(_owner);
+    _grateful.setCustomFee(200, _merchant);
+
+    // Process payment with custom fee of 2%
+    vm.startPrank(_usdcWhale);
+    _usdc.approve(address(_grateful), _amount);
+    uint256 paymentId1 = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
+    _grateful.pay(_merchant, address(_usdc), _amount, paymentId1);
+    vm.stopPrank();
+
+    // Expected amounts
+    uint256 expectedCustomFee = (_amount * 200) / 10_000; // 2% fee
+    uint256 expectedMerchantAmount = _amount - expectedCustomFee;
+
+    // Verify balances after first payment
+    assertEq(_usdc.balanceOf(_merchant), expectedMerchantAmount, "Merchant balance mismatch after first payment");
+    assertEq(_usdc.balanceOf(_owner), expectedCustomFee, "Owner balance mismatch after first payment");
+
+    // ------------------------------
+    // 2. Set custom fee of 0% (no fee) for the _merchant
+    // ------------------------------
+    vm.prank(_owner);
+    _grateful.setCustomFee(0, _merchant);
+
+    // Process payment with custom fee of 0%
+    vm.startPrank(_usdcWhale);
+    _usdc.approve(address(_grateful), _amount);
+    uint256 paymentId2 = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
+    _grateful.pay(_merchant, address(_usdc), _amount, paymentId2);
+    vm.stopPrank();
+
+    // Expected amounts
+    uint256 expectedZeroFee = 0; // 0% fee
+    uint256 expectedMerchantAmount2 = _amount;
+
+    // Verify balances after second payment
+    assertEq(
+      _usdc.balanceOf(_merchant),
+      expectedMerchantAmount + expectedMerchantAmount2,
+      "Merchant balance mismatch after second payment"
+    );
+    assertEq(
+      _usdc.balanceOf(_owner), expectedCustomFee + expectedZeroFee, "Owner balance mismatch after second payment"
+    );
+
+    // ------------------------------
+    // 3. Unset custom fee for the _merchant (should revert to default fee)
+    // ------------------------------
+    vm.prank(_owner);
+    _grateful.unsetCustomFee(_merchant);
+
+    // Process payment after unsetting custom fee
+    vm.startPrank(_usdcWhale);
+    _usdc.approve(address(_grateful), _amount);
+    uint256 paymentId3 = _grateful.calculateId(_usdcWhale, _merchant, address(_usdc), _amount);
+    _grateful.pay(_merchant, address(_usdc), _amount, paymentId3);
+    vm.stopPrank();
+
+    // Expected amounts
+    uint256 expectedFeeAfterUnset = (_amount * 100) / 10_000; // 1% fee
+    uint256 expectedMerchantAmount3 = _amount - expectedFeeAfterUnset;
+
+    // Verify balances after fourth payment
+    assertEq(
+      _usdc.balanceOf(_merchant),
+      expectedMerchantAmount + expectedMerchantAmount2 + expectedMerchantAmount3,
+      "Merchant balance mismatch after fourth payment"
+    );
+    assertEq(
+      _usdc.balanceOf(_owner),
+      expectedCustomFee + expectedZeroFee + expectedFeeAfterUnset,
+      "Owner balance mismatch after fourth payment"
+    );
   }
 
   function test_OneTimePaymentYieldingFunds() public {
@@ -87,10 +166,10 @@ contract IntegrationGreeter is IntegrationBase {
     _grateful.withdraw(address(_usdc));
 
     // 8. Check if merchant's balance is greater than the amount with fee applied
-    assertGt(_usdc.balanceOf(_merchant), _grateful.applyFee(_amount));
+    assertGt(_usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _amount));
 
     // 9. Check that owner holds the fee amount
-    uint256 feeAmount = _amount - _grateful.applyFee(_amount);
+    uint256 feeAmount = _amount - _grateful.applyFee(_merchant, _amount);
     assertEq(_usdc.balanceOf(_owner), feeAmount);
   }
 
@@ -115,7 +194,7 @@ contract IntegrationGreeter is IntegrationBase {
     vm.stopPrank();
 
     // 4. Calculate expected amounts after fee
-    uint256 amountAfterFee = _grateful.applyFee(_amount);
+    uint256 amountAfterFee = _grateful.applyFee(_merchant, _amount);
     uint256 expectedAmountRecipient0 = (amountAfterFee * percentages[0]) / 10_000;
     uint256 expectedAmountRecipient1 = (amountAfterFee * percentages[1]) / 10_000;
 
@@ -153,7 +232,7 @@ contract IntegrationGreeter is IntegrationBase {
     _grateful.createOneTimePayment(_merchant, _tokens, _amount, 4, paymentId, precomputed, recipients, percentages);
 
     // 6. Calculate expected amounts after fee
-    uint256 amountAfterFee = _grateful.applyFee(_amount);
+    uint256 amountAfterFee = _grateful.applyFee(_merchant, _amount);
     uint256 expectedAmountRecipient0 = (amountAfterFee * percentages[0]) / 10_000;
     uint256 expectedAmountRecipient1 = (amountAfterFee * percentages[1]) / 10_000;
 

@@ -45,6 +45,9 @@ contract Grateful is IGrateful, Ownable2Step {
   /// @inheritdoc IGrateful
   uint256 public fee;
 
+  /// @inheritdoc IGrateful
+  mapping(address => CustomFee) public override customFees;
+
   /*//////////////////////////////////////////////////////////////
                                 MODIFIERS
     //////////////////////////////////////////////////////////////*/
@@ -103,11 +106,13 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   /// @inheritdoc IGrateful
-  function applyFee(
-    uint256 amount
-  ) public view returns (uint256) {
-    uint256 feeAmount = (amount * fee) / 10_000;
-    return amount - feeAmount;
+  function applyFee(address _merchant, uint256 _amount) public view returns (uint256) {
+    uint256 feePercentage = fee;
+    if (customFees[_merchant].isSet) {
+      feePercentage = customFees[_merchant].fee;
+    }
+    uint256 feeAmount = (_amount * feePercentage) / 10_000;
+    return _amount - feeAmount;
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -281,6 +286,18 @@ contract Grateful is IGrateful, Ownable2Step {
     fee = _newFee;
   }
 
+  /// @inheritdoc IGrateful
+  function setCustomFee(uint256 _newFee, address _merchant) external onlyOwner {
+    customFees[_merchant] = CustomFee({isSet: true, fee: _newFee});
+  }
+
+  /// @inheritdoc IGrateful
+  function unsetCustomFee(
+    address _merchant
+  ) external onlyOwner {
+    delete customFees[_merchant];
+  }
+
   /*//////////////////////////////////////////////////////////////
                            INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -310,7 +327,7 @@ contract Grateful is IGrateful, Ownable2Step {
     }
 
     // Apply the fee
-    uint256 amountWithFee = applyFee(_amount);
+    uint256 amountWithFee = applyFee(_merchant, _amount);
 
     // Transfer fee to owner
     if (!IERC20(_token).transfer(owner(), _amount - amountWithFee)) {
