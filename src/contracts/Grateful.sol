@@ -115,6 +115,7 @@ contract Grateful is IGrateful, Ownable2Step {
     return _amount - feeAmount;
   }
 
+  /// @inheritdoc IGrateful
   function owner() public view override(IGrateful, Ownable) returns (address) {
     return super.owner();
   }
@@ -359,10 +360,13 @@ contract Grateful is IGrateful, Ownable2Step {
         if (yieldingFunds[recipient]) {
           AaveV3ERC4626 vault = vaults[_token];
           if (address(vault) == address(0)) {
-            revert Grateful_VaultNotSet();
+            if (!IERC20(_token).transfer(recipient, recipientShare)) {
+              revert Grateful_TransferFailed();
+            }
+          } else {
+            uint256 _shares = vault.deposit(recipientShare, address(this));
+            shares[recipient][_token] += _shares;
           }
-          uint256 _shares = vault.deposit(recipientShare, address(this));
-          shares[recipient][_token] += _shares;
         } else {
           // Transfer tokens to recipient
           if (!IERC20(_token).transfer(recipient, recipientShare)) {
@@ -375,10 +379,13 @@ contract Grateful is IGrateful, Ownable2Step {
       if (yieldingFunds[_merchant]) {
         AaveV3ERC4626 vault = vaults[_token];
         if (address(vault) == address(0)) {
-          revert Grateful_VaultNotSet();
+          if (!IERC20(_token).transfer(_merchant, amountWithFee)) {
+            revert Grateful_TransferFailed();
+          }
+        } else {
+          uint256 _shares = vault.deposit(amountWithFee, address(this));
+          shares[_merchant][_token] += _shares;
         }
-        uint256 _shares = vault.deposit(amountWithFee, address(this));
-        shares[_merchant][_token] += _shares;
       } else {
         // Transfer tokens to merchant
         if (!IERC20(_token).transfer(_merchant, amountWithFee)) {
