@@ -2,14 +2,19 @@
 pragma solidity 0.8.26;
 
 import {OneTime} from "contracts/OneTime.sol";
-import {IGrateful, IntegrationBase} from "test/integration/IntegrationBase.sol";
+import {IntegrationBase} from "test/integration/IntegrationBase.sol";
 
 contract IntegrationGreeter is IntegrationBase {
-  function test_Payment() public {
-    vm.startPrank(_payer);
-    _usdc.approve(address(_grateful), _amount);
-    _grateful.pay(_merchant, address(_usdc), _amount, _grateful.calculateId(_payer, _merchant, address(_usdc), _amount));
+  function _approveAndPay(address payer, address merchant, uint256 amount) internal {
+    uint256 paymentId = _grateful.calculateId(payer, merchant, address(_usdc), amount);
+    vm.startPrank(payer);
+    _usdc.approve(address(_grateful), amount);
+    _grateful.pay(merchant, address(_usdc), amount, paymentId);
     vm.stopPrank();
+  }
+
+  function test_Payment() public {
+    _approveAndPay(_payer, _merchant, _amount);
 
     assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _amount));
   }
@@ -22,10 +27,7 @@ contract IntegrationGreeter is IntegrationBase {
 
     assertEq(_grateful.yieldingFunds(_merchant), true);
 
-    vm.startPrank(_payer);
-    _usdc.approve(address(_grateful), _amount);
-    _grateful.pay(_merchant, address(_usdc), _amount, _grateful.calculateId(_payer, _merchant, address(_usdc), _amount));
-    vm.stopPrank();
+    _approveAndPay(_payer, _merchant, _amount);
 
     vm.warp(block.timestamp + 60 days);
 
@@ -93,11 +95,7 @@ contract IntegrationGreeter is IntegrationBase {
     _grateful.setCustomFee(200, _merchant);
 
     // Process payment with custom fee of 2%
-    vm.startPrank(_payer);
-    _usdc.approve(address(_grateful), _amount);
-    uint256 paymentId1 = _grateful.calculateId(_payer, _merchant, address(_usdc), _amount);
-    _grateful.pay(_merchant, address(_usdc), _amount, paymentId1);
-    vm.stopPrank();
+    _approveAndPay(_payer, _merchant, _amount);
 
     // Expected amounts
     uint256 expectedCustomFee = (_amount * 200) / 10_000; // 2% fee
@@ -113,12 +111,11 @@ contract IntegrationGreeter is IntegrationBase {
     vm.prank(_owner);
     _grateful.setCustomFee(0, _merchant);
 
+    // Advance time so calculated paymentId doesn't collide
+    vm.warp(block.timestamp + 1);
+
     // Process payment with custom fee of 0%
-    vm.startPrank(_payer);
-    _usdc.approve(address(_grateful), _amount);
-    uint256 paymentId2 = _grateful.calculateId(_payer, _merchant, address(_usdc), _amount);
-    _grateful.pay(_merchant, address(_usdc), _amount, paymentId2);
-    vm.stopPrank();
+    _approveAndPay(_payer, _merchant, _amount);
 
     // Expected amounts
     uint256 expectedZeroFee = 0; // 0% fee
@@ -140,12 +137,11 @@ contract IntegrationGreeter is IntegrationBase {
     vm.prank(_owner);
     _grateful.unsetCustomFee(_merchant);
 
+    // Advance time so calculated paymentId doesn't collide
+    vm.warp(block.timestamp + 1);
+
     // Process payment after unsetting custom fee
-    vm.startPrank(_payer);
-    _usdc.approve(address(_grateful), _amount);
-    uint256 paymentId3 = _grateful.calculateId(_payer, _merchant, address(_usdc), _amount);
-    _grateful.pay(_merchant, address(_usdc), _amount, paymentId3);
-    vm.stopPrank();
+    _approveAndPay(_payer, _merchant, _amount);
 
     // Expected amounts
     uint256 expectedFeeAfterUnset = (_amount * 100) / 10_000; // 1% fee

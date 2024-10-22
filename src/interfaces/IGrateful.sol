@@ -72,6 +72,9 @@ interface IGrateful {
   /// @notice Thrown when the one-time payment is not found.
   error Grateful_OneTimeNotFound();
 
+  /// @notice Thrown when the payment id has been used.
+  error Grateful_PaymentIdAlreadyUsed();
+
   /*///////////////////////////////////////////////////////////////
                                VARIABLES
     //////////////////////////////////////////////////////////////*/
@@ -126,6 +129,13 @@ interface IGrateful {
   function customFees(
     address _merchant
   ) external view returns (bool isSet, uint256 fee);
+
+  /// @notice Returns if a paymentId has been used.
+  /// @param paymentId The payment id.
+  /// @return isUsed If the payment id has been used.
+  function paymentIds(
+    uint256 paymentId
+  ) external view returns (bool isUsed);
 
   /*///////////////////////////////////////////////////////////////
                                 LOGIC

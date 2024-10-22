@@ -47,6 +47,9 @@ contract Grateful is IGrateful, Ownable2Step {
   /// @inheritdoc IGrateful
   mapping(address => CustomFee) public override customFees;
 
+  /// @inheritdoc IGrateful
+  mapping(uint256 => bool) public paymentIds;
+
   /*//////////////////////////////////////////////////////////////
                                 MODIFIERS
     //////////////////////////////////////////////////////////////*/
@@ -330,6 +333,11 @@ contract Grateful is IGrateful, Ownable2Step {
       revert Grateful_TransferFailed();
     }
 
+    // Check payment id
+    if (paymentIds[_paymentId]) {
+      revert Grateful_PaymentIdAlreadyUsed();
+    }
+
     // Apply the fee
     uint256 amountWithFee = applyFee(_merchant, _amount);
 
@@ -392,6 +400,8 @@ contract Grateful is IGrateful, Ownable2Step {
         }
       }
     }
+
+    paymentIds[_paymentId] = true;
 
     emit PaymentProcessed(_sender, _merchant, _token, _amount, yieldingFunds[_merchant], _paymentId);
   }
