@@ -6,7 +6,6 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import {OneTime} from "contracts/OneTime.sol";
 
-import {console} from "forge-std/console.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {IGrateful} from "interfaces/IGrateful.sol";
 
