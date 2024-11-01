@@ -4,9 +4,11 @@ pragma solidity 0.8.26;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import {OneTime} from "contracts/OneTime.sol";
 
-import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {IGrateful} from "interfaces/IGrateful.sol";
 
 import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
@@ -18,9 +20,10 @@ import {AaveV3ERC4626, IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
  */
 contract Grateful is IGrateful, Ownable2Step {
   using Bytes32AddressLib for bytes32;
+  using SafeERC20 for IERC20;
 
   /*//////////////////////////////////////////////////////////////
-                               STATE VARIABLES
+                                 STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IGrateful
@@ -51,7 +54,7 @@ contract Grateful is IGrateful, Ownable2Step {
   mapping(uint256 => bool) public paymentIds;
 
   /*//////////////////////////////////////////////////////////////
-                                MODIFIERS
+                                    MODIFIERS
     //////////////////////////////////////////////////////////////*/
 
   modifier onlyWhenTokenWhitelisted(
@@ -75,7 +78,7 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   /*//////////////////////////////////////////////////////////////
-                              CONSTRUCTOR
+                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
   /**
@@ -89,12 +92,13 @@ contract Grateful is IGrateful, Ownable2Step {
     fee = _initialFee;
     for (uint256 i = 0; i < _tokens.length; i++) {
       tokensWhitelisted[_tokens[i]] = true;
-      IERC20(_tokens[i]).approve(address(_aavePool), type(uint256).max);
+      IERC20 _token = IERC20(_tokens[i]);
+      _token.safeIncreaseAllowance(address(_aavePool), type(uint256).max);
     }
   }
 
   /*//////////////////////////////////////////////////////////////
-                            PUBLIC FUNCTIONS
+                              PUBLIC FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IGrateful
@@ -102,19 +106,19 @@ contract Grateful is IGrateful, Ownable2Step {
     address _sender,
     address _merchant,
     address _token,
-    uint256 _amount
+    uint256 _AMOUNT_USDC
   ) public view returns (uint256) {
-    return uint256(keccak256(abi.encodePacked(_sender, _merchant, _token, _amount, block.timestamp)));
+    return uint256(keccak256(abi.encodePacked(_sender, _merchant, _token, _AMOUNT_USDC, block.timestamp)));
   }
 
   /// @inheritdoc IGrateful
-  function applyFee(address _merchant, uint256 _amount) public view returns (uint256) {
+  function applyFee(address _merchant, uint256 _AMOUNT_USDC) public view returns (uint256) {
     uint256 feePercentage = fee;
     if (customFees[_merchant].isSet) {
       feePercentage = customFees[_merchant].fee;
     }
-    uint256 feeAmount = (_amount * feePercentage) / 10_000;
-    return _amount - feeAmount;
+    uint256 feeAmount = (_AMOUNT_USDC * feePercentage) / 10_000;
+    return _AMOUNT_USDC - feeAmount;
   }
 
   /// @inheritdoc IGrateful
@@ -123,7 +127,7 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   /*//////////////////////////////////////////////////////////////
-                          EXTERNAL FUNCTIONS
+                            EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IGrateful
@@ -131,42 +135,42 @@ contract Grateful is IGrateful, Ownable2Step {
     address _token
   ) external onlyOwner {
     tokensWhitelisted[_token] = true;
-    IERC20(_token).approve(address(aavePool), type(uint256).max);
+    IERC20(_token).safeIncreaseAllowance(address(aavePool), type(uint256).max);
   }
 
   /// @inheritdoc IGrateful
-  function addVault(address _token, address _vault) external onlyOwner onlyWhenTokenWhitelisted(_token) {
-    vaults[_token] = AaveV3ERC4626(_vault);
-    IERC20(_token).approve(address(_vault), type(uint256).max);
+  function addVault(address _token, address _usdcVault) external onlyOwner onlyWhenTokenWhitelisted(_token) {
+    vaults[_token] = AaveV3ERC4626(_usdcVault);
+    IERC20(_token).safeIncreaseAllowance(address(_usdcVault), type(uint256).max);
   }
 
   /// @inheritdoc IGrateful
   function pay(
     address _merchant,
     address _token,
-    uint256 _amount,
+    uint256 _AMOUNT_USDC,
     uint256 _id
   ) external onlyWhenTokenWhitelisted(_token) {
-    _processPayment(msg.sender, _merchant, _token, _amount, _id, new address[](0), new uint256[](0));
+    _processPayment(msg.sender, _merchant, _token, _AMOUNT_USDC, _id, new address[](0), new uint256[](0));
   }
 
   /// @inheritdoc IGrateful
   function pay(
     address _merchant,
     address _token,
-    uint256 _amount,
+    uint256 _AMOUNT_USDC,
     uint256 _id,
     address[] calldata _recipients,
     uint256[] calldata _percentages
   ) external onlyWhenTokenWhitelisted(_token) {
-    _processPayment(msg.sender, _merchant, _token, _amount, _id, _recipients, _percentages);
+    _processPayment(msg.sender, _merchant, _token, _AMOUNT_USDC, _id, _recipients, _percentages);
   }
 
   /// @inheritdoc IGrateful
   function createOneTimePayment(
     address _merchant,
     address[] memory _tokens,
-    uint256 _amount,
+    uint256 _AMOUNT_USDC,
     uint256 _salt,
     uint256 _paymentId,
     address precomputed,
@@ -175,9 +179,9 @@ contract Grateful is IGrateful, Ownable2Step {
   ) external onlyWhenTokensWhitelisted(_tokens) returns (OneTime oneTime) {
     oneTimePayments[precomputed] = true;
     oneTime = new OneTime{salt: bytes32(_salt)}(
-      IGrateful(address(this)), _tokens, _merchant, _amount, _paymentId, _recipients, _percentages
+      IGrateful(address(this)), _tokens, _merchant, _AMOUNT_USDC, _paymentId, _recipients, _percentages
     );
-    emit OneTimePaymentCreated(_merchant, _tokens, _amount);
+    emit OneTimePaymentCreated(_merchant, _tokens, _AMOUNT_USDC);
   }
 
   /// @inheritdoc IGrateful
@@ -185,21 +189,21 @@ contract Grateful is IGrateful, Ownable2Step {
     address _merchant,
     address _token,
     uint256 _paymentId,
-    uint256 _amount,
+    uint256 _AMOUNT_USDC,
     address[] calldata _recipients,
     uint256[] calldata _percentages
   ) external {
     if (!oneTimePayments[msg.sender]) {
       revert Grateful_OneTimeNotFound();
     }
-    _processPayment(msg.sender, _merchant, _token, _amount, _paymentId, _recipients, _percentages);
+    _processPayment(msg.sender, _merchant, _token, _AMOUNT_USDC, _paymentId, _recipients, _percentages);
   }
 
   /// @inheritdoc IGrateful
   function computeOneTimeAddress(
     address _merchant,
     address[] memory _tokens,
-    uint256 _amount,
+    uint256 _AMOUNT_USDC,
     uint256 _salt,
     uint256 _paymentId,
     address[] calldata _recipients,
@@ -207,7 +211,7 @@ contract Grateful is IGrateful, Ownable2Step {
   ) external view returns (OneTime oneTime) {
     bytes memory bytecode = abi.encodePacked(
       type(OneTime).creationCode,
-      abi.encode(address(this), _tokens, _merchant, _amount, _paymentId, _recipients, _percentages)
+      abi.encode(address(this), _tokens, _merchant, _AMOUNT_USDC, _paymentId, _recipients, _percentages)
     );
     bytes32 bytecodeHash = keccak256(bytecode);
     bytes32 addressHash = keccak256(abi.encodePacked(bytes1(0xff), address(this), bytes32(_salt), bytecodeHash));
@@ -219,16 +223,16 @@ contract Grateful is IGrateful, Ownable2Step {
   function createOneTimePayment(
     address _merchant,
     address[] memory _tokens,
-    uint256 _amount,
+    uint256 _AMOUNT_USDC,
     uint256 _salt,
     uint256 _paymentId,
     address precomputed
   ) external onlyWhenTokensWhitelisted(_tokens) returns (OneTime oneTime) {
     oneTimePayments[precomputed] = true;
     oneTime = new OneTime{salt: bytes32(_salt)}(
-      IGrateful(address(this)), _tokens, _merchant, _amount, _paymentId, new address[](0), new uint256[](0)
+      IGrateful(address(this)), _tokens, _merchant, _AMOUNT_USDC, _paymentId, new address[](0), new uint256[](0)
     );
-    emit OneTimePaymentCreated(_merchant, _tokens, _amount);
+    emit OneTimePaymentCreated(_merchant, _tokens, _AMOUNT_USDC);
   }
 
   /// @inheritdoc IGrateful
@@ -236,15 +240,15 @@ contract Grateful is IGrateful, Ownable2Step {
     address _merchant,
     IERC20[] memory _tokens,
     uint256 _paymentId,
-    uint256 _amount
+    uint256 _AMOUNT_USDC
   ) external {
     if (!oneTimePayments[msg.sender]) {
       revert Grateful_OneTimeNotFound();
     }
     for (uint256 i = 0; i < _tokens.length; i++) {
-      if (_tokens[i].balanceOf(msg.sender) >= _amount) {
+      if (_tokens[i].balanceOf(msg.sender) >= _AMOUNT_USDC) {
         _processPayment(
-          msg.sender, _merchant, address(_tokens[i]), _amount, _paymentId, new address[](0), new uint256[](0)
+          msg.sender, _merchant, address(_tokens[i]), _AMOUNT_USDC, _paymentId, new address[](0), new uint256[](0)
         );
       }
     }
@@ -254,13 +258,13 @@ contract Grateful is IGrateful, Ownable2Step {
   function computeOneTimeAddress(
     address _merchant,
     address[] memory _tokens,
-    uint256 _amount,
+    uint256 _AMOUNT_USDC,
     uint256 _salt,
     uint256 _paymentId
   ) external view returns (OneTime oneTime) {
     bytes memory bytecode = abi.encodePacked(
       type(OneTime).creationCode,
-      abi.encode(address(this), _tokens, _merchant, _amount, _paymentId, new address[](0), new uint256[](0))
+      abi.encode(address(this), _tokens, _merchant, _AMOUNT_USDC, _paymentId, new address[](0), new uint256[](0))
     );
     bytes32 bytecodeHash = keccak256(bytecode);
     bytes32 addressHash = keccak256(abi.encodePacked(bytes1(0xff), address(this), bytes32(_salt), bytecodeHash));
@@ -274,25 +278,71 @@ contract Grateful is IGrateful, Ownable2Step {
   ) external onlyWhenTokenWhitelisted(_token) {
     AaveV3ERC4626 vault = vaults[_token];
     if (address(vault) == address(0)) {
-      revert Grateful_VaultNotSet();
+      revert Grateful_usdcVaultNotSet();
     }
     uint256 _shares = shares[msg.sender][_token];
     shares[msg.sender][_token] = 0;
     vault.redeem(_shares, msg.sender, address(this));
   }
 
+  /// @inheritdoc IGrateful
   function withdraw(address _token, uint256 _assets) external onlyWhenTokenWhitelisted(_token) {
     AaveV3ERC4626 vault = vaults[_token];
     if (address(vault) == address(0)) {
-      revert Grateful_VaultNotSet();
+      revert Grateful_usdcVaultNotSet();
     }
     uint256 _totalShares = shares[msg.sender][_token];
     uint256 _sharesToWithdraw = vault.convertToShares(_assets);
-    if (_sharesToWithdraw < _totalShares) {
+    if (_sharesToWithdraw > _totalShares) {
       revert Grateful_WithdrawExceedsShares();
     }
     shares[msg.sender][_token] = _totalShares - _sharesToWithdraw;
     vault.withdraw(_assets, msg.sender, address(this));
+  }
+
+  /// @inheritdoc IGrateful
+  function withdrawMultiple(
+    address[] memory _tokens
+  ) external onlyWhenTokensWhitelisted(_tokens) {
+    uint256 tokensLength = _tokens.length;
+    for (uint256 i = 0; i < tokensLength; i++) {
+      address _token = _tokens[i];
+      AaveV3ERC4626 vault = vaults[_token];
+      if (address(vault) == address(0)) {
+        revert Grateful_usdcVaultNotSet();
+      }
+      uint256 _shares = shares[msg.sender][_token];
+      if (_shares > 0) {
+        shares[msg.sender][_token] = 0;
+        vault.redeem(_shares, msg.sender, address(this));
+      }
+    }
+  }
+
+  /// @inheritdoc IGrateful
+  function withdrawMultiple(
+    address[] memory _tokens,
+    uint256[] memory _assets
+  ) external onlyWhenTokensWhitelisted(_tokens) {
+    uint256 tokensLength = _tokens.length;
+    if (tokensLength != _assets.length) {
+      revert Grateful_MismatchedArrays();
+    }
+    for (uint256 i = 0; i < tokensLength; i++) {
+      address _token = _tokens[i];
+      uint256 _assetsToWithdraw = _assets[i];
+      AaveV3ERC4626 vault = vaults[_token];
+      if (address(vault) == address(0)) {
+        revert Grateful_usdcVaultNotSet();
+      }
+      uint256 _totalShares = shares[msg.sender][_token];
+      uint256 _sharesToWithdraw = vault.convertToShares(_assetsToWithdraw);
+      if (_sharesToWithdraw > _totalShares) {
+        revert Grateful_WithdrawExceedsShares();
+      }
+      shares[msg.sender][_token] = _totalShares - _sharesToWithdraw;
+      vault.withdraw(_assetsToWithdraw, msg.sender, address(this));
+    }
   }
 
   /// @inheritdoc IGrateful
@@ -320,7 +370,7 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   /*//////////////////////////////////////////////////////////////
-                           INTERNAL FUNCTIONS
+                             INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
   /**
@@ -328,8 +378,8 @@ contract Grateful is IGrateful, Ownable2Step {
    * @param _sender Address of the sender.
    * @param _merchant Address of the merchant.
    * @param _token Address of the token.
-   * @param _amount Amount of the token.
-   * @param _paymentId ID of the payment
+   * @param _AMOUNT_USDC Amount of the token.
+   * @param _paymentId ID of the payment.
    * @param _recipients List of recipients for payment splitting.
    * @param _percentages Corresponding percentages for each recipient.
    */
@@ -337,15 +387,13 @@ contract Grateful is IGrateful, Ownable2Step {
     address _sender,
     address _merchant,
     address _token,
-    uint256 _amount,
+    uint256 _AMOUNT_USDC,
     uint256 _paymentId,
     address[] memory _recipients,
     uint256[] memory _percentages
   ) internal {
     // Transfer the full amount from the sender to this contract
-    if (!IERC20(_token).transferFrom(_sender, address(this), _amount)) {
-      revert Grateful_TransferFailed();
-    }
+    IERC20(_token).safeTransferFrom(_sender, address(this), _AMOUNT_USDC);
 
     // Check payment id
     if (paymentIds[_paymentId]) {
@@ -353,12 +401,10 @@ contract Grateful is IGrateful, Ownable2Step {
     }
 
     // Apply the fee
-    uint256 amountWithFee = applyFee(_merchant, _amount);
+    uint256 amountWithFee = applyFee(_merchant, _AMOUNT_USDC);
 
     // Transfer fee to owner
-    if (!IERC20(_token).transfer(owner(), _amount - amountWithFee)) {
-      revert Grateful_TransferFailed();
-    }
+    IERC20(_token).safeTransfer(owner(), _AMOUNT_USDC - amountWithFee);
 
     // If payment splitting is requested
     if (_recipients.length > 0) {
@@ -381,18 +427,14 @@ contract Grateful is IGrateful, Ownable2Step {
         if (yieldingFunds[recipient]) {
           AaveV3ERC4626 vault = vaults[_token];
           if (address(vault) == address(0)) {
-            if (!IERC20(_token).transfer(recipient, recipientShare)) {
-              revert Grateful_TransferFailed();
-            }
+            IERC20(_token).safeTransfer(recipient, recipientShare);
           } else {
             uint256 _shares = vault.deposit(recipientShare, address(this));
             shares[recipient][_token] += _shares;
           }
         } else {
           // Transfer tokens to recipient
-          if (!IERC20(_token).transfer(recipient, recipientShare)) {
-            revert Grateful_TransferFailed();
-          }
+          IERC20(_token).safeTransfer(recipient, recipientShare);
         }
       }
     } else {
@@ -400,23 +442,19 @@ contract Grateful is IGrateful, Ownable2Step {
       if (yieldingFunds[_merchant]) {
         AaveV3ERC4626 vault = vaults[_token];
         if (address(vault) == address(0)) {
-          if (!IERC20(_token).transfer(_merchant, amountWithFee)) {
-            revert Grateful_TransferFailed();
-          }
+          IERC20(_token).safeTransfer(_merchant, amountWithFee);
         } else {
           uint256 _shares = vault.deposit(amountWithFee, address(this));
           shares[_merchant][_token] += _shares;
         }
       } else {
         // Transfer tokens to merchant
-        if (!IERC20(_token).transfer(_merchant, amountWithFee)) {
-          revert Grateful_TransferFailed();
-        }
+        IERC20(_token).safeTransfer(_merchant, amountWithFee);
       }
     }
 
     paymentIds[_paymentId] = true;
 
-    emit PaymentProcessed(_sender, _merchant, _token, _amount, yieldingFunds[_merchant], _paymentId);
+    emit PaymentProcessed(_sender, _merchant, _token, _AMOUNT_USDC, yieldingFunds[_merchant], _paymentId);
   }
 }
