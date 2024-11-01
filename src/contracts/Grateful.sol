@@ -286,11 +286,12 @@ contract Grateful is IGrateful, Ownable2Step {
     if (address(vault) == address(0)) {
       revert Grateful_VaultNotSet();
     }
-    uint256 _shares = shares[msg.sender][_token];
-    if (vault.convertToShares(_assets) < _shares) {
+    uint256 _totalShares = shares[msg.sender][_token];
+    uint256 _sharesToWithdraw = vault.convertToShares(_assets);
+    if (_sharesToWithdraw < _totalShares) {
       revert Grateful_WithdrawExceedsShares();
     }
-    shares[msg.sender][_token] = 0;
+    shares[msg.sender][_token] = _totalShares - _sharesToWithdraw;
     vault.withdraw(_assets, msg.sender, address(this));
   }
 
