@@ -75,6 +75,9 @@ interface IGrateful {
   /// @notice Thrown when the payment id has been used.
   error Grateful_PaymentIdAlreadyUsed();
 
+  /// @notice Thrown when the user tries to withdraw more than he has
+  error Grateful_WithdrawExceedsShares();
+
   /*///////////////////////////////////////////////////////////////
                                VARIABLES
     //////////////////////////////////////////////////////////////*/

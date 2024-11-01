@@ -281,6 +281,19 @@ contract Grateful is IGrateful, Ownable2Step {
     vault.redeem(_shares, msg.sender, address(this));
   }
 
+  function withdraw(address _token, uint256 _assets) external onlyWhenTokenWhitelisted(_token) {
+    AaveV3ERC4626 vault = vaults[_token];
+    if (address(vault) == address(0)) {
+      revert Grateful_VaultNotSet();
+    }
+    uint256 _shares = shares[msg.sender][_token];
+    if (vault.convertToShares(_assets) < _shares) {
+      revert Grateful_WithdrawExceedsShares();
+    }
+    shares[msg.sender][_token] = 0;
+    vault.withdraw(_assets, msg.sender, address(this));
+  }
+
   /// @inheritdoc IGrateful
   function switchYieldingFunds() external {
     yieldingFunds[msg.sender] = !yieldingFunds[msg.sender];
