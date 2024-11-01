@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {Grateful, IGrateful} from "contracts/Grateful.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import {AaveV3Vault} from "contracts/vaults/AaveV3Vault.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";

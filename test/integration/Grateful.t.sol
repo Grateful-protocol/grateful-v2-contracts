@@ -81,7 +81,7 @@ contract IntegrationGreeter is IntegrationBase {
 
     // Rescue funds
     vm.prank(_owner);
-    _oneTime.rescueFunds(address(_usdc), _payer, _AMOUNT_USDC);
+    _oneTime.rescueFunds(_usdc, _payer, _AMOUNT_USDC);
 
     // Client has received his funds
     assertEq(_usdc.balanceOf(address(_payer)), prevWhaleBalance + _AMOUNT_USDC);
