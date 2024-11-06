@@ -86,12 +86,18 @@ interface IGrateful {
   /// @notice Thrown when the user tries to withdraw more shares than they have.
   error Grateful_WithdrawExceedsShares();
 
+  /// @notice Thrown when the signature is not valid.
+  error Grateful_InvalidSignature();
+
   /*///////////////////////////////////////////////////////////////
                                  VARIABLES
     //////////////////////////////////////////////////////////////*/
 
   /// @notice Returns the owner of the contract.
   function owner() external view returns (address);
+
+  /// @notice Returns the message to sign to switch yield with signature
+  function SWITCH_YIELD_MESSAGE() external view returns (string memory);
 
   /// @notice Aave pool for yielding merchants' funds.
   function aavePool() external view returns (IPool);
@@ -341,6 +347,11 @@ interface IGrateful {
    * @notice Toggles the merchant's preference to yield funds.
    */
   function switchYieldingFunds() external;
+
+  /**
+   * @notice Toggles the merchant's preference to yield funds using a signature.
+   */
+  function switchYieldingFundsWithSig(bytes calldata _signature, address _merchant) external;
 
   /**
    * @notice Calculates the ID of a payment.

@@ -2,6 +2,8 @@
 pragma solidity 0.8.26;
 
 import {OneTime} from "contracts/OneTime.sol";
+
+import {console} from "forge-std/console.sol";
 import {IntegrationBase} from "test/integration/IntegrationBase.sol";
 
 contract IntegrationGreeter is IntegrationBase {
@@ -267,5 +269,15 @@ contract IntegrationGreeter is IntegrationBase {
     // Ensure owner received the fee
     uint256 feeAmount = _AMOUNT_USDC - amountAfterFee;
     assertEq(_usdc.balanceOf(_owner), feeAmount);
+  }
+
+  function test_SwitchYieldingFundsWithSig() public {
+    string memory message = _grateful.SWITCH_YIELD_MESSAGE();
+
+    (uint8 v, bytes32 r, bytes32 s) = vm.sign(_userPk, keccak256(abi.encode(message)));
+
+    bytes memory signature = abi.encodePacked(r, s, v);
+
+    _grateful.switchYieldingFundsWithSig(signature, _user);
   }
 }

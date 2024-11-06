@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -21,6 +22,7 @@ import {AaveV3ERC4626, IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 contract Grateful is IGrateful, Ownable2Step {
   using Bytes32AddressLib for bytes32;
   using SafeERC20 for IERC20;
+  using ECDSA for bytes32;
 
   /*//////////////////////////////////////////////////////////////
                                  STATE VARIABLES
@@ -28,6 +30,9 @@ contract Grateful is IGrateful, Ownable2Step {
 
   /// @inheritdoc IGrateful
   IPool public aavePool;
+
+  /// @inheritdoc IGrateful
+  string public constant SWITCH_YIELD_MESSAGE = unicode"🐧 At Grateful, we love penguins 🐧";
 
   /// @inheritdoc IGrateful
   mapping(address => bool) public tokensWhitelisted;
@@ -348,6 +353,17 @@ contract Grateful is IGrateful, Ownable2Step {
   /// @inheritdoc IGrateful
   function switchYieldingFunds() external {
     yieldingFunds[msg.sender] = !yieldingFunds[msg.sender];
+  }
+
+  /// @inheritdoc IGrateful
+  function switchYieldingFundsWithSig(bytes calldata _signature, address _merchant) external {
+    // TODO: Nonce pls
+    bytes32 signedMessageHash = keccak256(abi.encode(SWITCH_YIELD_MESSAGE));
+
+    if (signedMessageHash.recover(_signature) != _merchant) {
+      revert Grateful_InvalidSignature();
+    }
+    yieldingFunds[_merchant] = !yieldingFunds[_merchant];
   }
 
   /// @inheritdoc IGrateful

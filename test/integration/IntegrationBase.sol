@@ -19,7 +19,8 @@ contract IntegrationBase is Test {
   uint256 internal constant _FEE = 100;
 
   // EOAs
-  address internal _user = makeAddr("user");
+  uint256 internal _userPk = 0x4f9f153352796ab5f555d215a5cba1c2b0daef31de556ab65c522435fb23373c;
+  address internal _user = vm.addr(_userPk);
   address internal _merchant = makeAddr("merchant");
   address internal _owner = makeAddr("owner");
   address internal _gratefulAutomation = makeAddr("gratefulAutomation");
