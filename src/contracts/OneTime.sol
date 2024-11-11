@@ -13,14 +13,21 @@ contract OneTime {
 
   IGrateful immutable grateful;
 
-  constructor(IGrateful _grateful, address[] memory _tokens, address _merchant, uint256 _amount, uint256 _paymentId) {
+  constructor(
+    IGrateful _grateful,
+    address[] memory _tokens,
+    address _merchant,
+    uint256 _amount,
+    uint256 _paymentId,
+    bool _yieldFunds
+  ) {
     grateful = _grateful;
 
     for (uint256 i = 0; i < _tokens.length; i++) {
       IERC20 token = IERC20(_tokens[i]);
       if (token.balanceOf(address(this)) >= _amount) {
         token.safeIncreaseAllowance(address(_grateful), _amount);
-        _grateful.receiveOneTimePayment(_merchant, address(token), _paymentId, _amount);
+        _grateful.receiveOneTimePayment(_merchant, address(token), _paymentId, _amount, _yieldFunds);
       }
     }
   }

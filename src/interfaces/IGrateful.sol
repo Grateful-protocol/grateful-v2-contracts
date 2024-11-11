@@ -103,13 +103,6 @@ interface IGrateful {
     address _token
   ) external view returns (bool);
 
-  /// @notice Returns the yielding preference of a merchant.
-  /// @param _merchant Address of the merchant.
-  /// @return True if the merchant prefers yielding funds, false otherwise.
-  function yieldingFunds(
-    address _merchant
-  ) external view returns (bool);
-
   /// @notice Returns the vault associated with a token.
   /// @param _token Address of the token.
   /// @return Address of the vault contract.
@@ -174,8 +167,9 @@ interface IGrateful {
    * @param _token Address of the token used for payment.
    * @param _amount Amount of the token to be paid.
    * @param _id ID of the payment.
+   * @param _yieldFunds Whether to yield funds or not
    */
-  function pay(address _merchant, address _token, uint256 _amount, uint256 _id) external;
+  function pay(address _merchant, address _token, uint256 _amount, uint256 _id, bool _yieldFunds) external;
 
   /**
    * @notice Creates a one-time payment without payment splitting.
@@ -184,6 +178,7 @@ interface IGrateful {
    * @param _amount Amount of the token.
    * @param _salt Salt used for address computation.
    * @param _paymentId ID of the payment.
+   * @param _yieldFunds Whether to yield funds or not
    * @param precomputed Precomputed address of the OneTime contract.
    * @return oneTime Address of the created OneTime contract.
    */
@@ -193,6 +188,7 @@ interface IGrateful {
     uint256 _amount,
     uint256 _salt,
     uint256 _paymentId,
+    bool _yieldFunds,
     address precomputed
   ) external returns (OneTime oneTime);
 
@@ -201,9 +197,16 @@ interface IGrateful {
    * @param _merchant Address of the merchant.
    * @param _token Token address.
    * @param _paymentId ID of the payment.
+   * @param _yieldFunds Whether to yield funds or not
    * @param _amount Amount of the token.
    */
-  function receiveOneTimePayment(address _merchant, address _token, uint256 _paymentId, uint256 _amount) external;
+  function receiveOneTimePayment(
+    address _merchant,
+    address _token,
+    uint256 _paymentId,
+    uint256 _amount,
+    bool _yieldFunds
+  ) external;
 
   /**
    * @notice Computes the address of a one-time payment contract without payment splitting.
@@ -212,6 +215,7 @@ interface IGrateful {
    * @param _amount Amount of the token.
    * @param _salt Salt used for address computation.
    * @param _paymentId ID of the payment.
+   * @param _yieldFunds Whether to yield funds or not
    * @return oneTime Address of the computed OneTime contract.
    */
   function computeOneTimeAddress(
@@ -219,7 +223,8 @@ interface IGrateful {
     address[] memory _tokens,
     uint256 _amount,
     uint256 _salt,
-    uint256 _paymentId
+    uint256 _paymentId,
+    bool _yieldFunds
   ) external view returns (OneTime oneTime);
 
   /**
@@ -251,11 +256,6 @@ interface IGrateful {
    * @param _assets Array of asset amounts to withdraw corresponding to each token.
    */
   function withdrawMultiple(address[] memory _tokens, uint256[] memory _assets) external;
-
-  /**
-   * @notice Toggles the merchant's preference to yield funds.
-   */
-  function switchYieldingFunds() external;
 
   /**
    * @notice Calculates the ID of a payment.

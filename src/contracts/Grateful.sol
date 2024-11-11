@@ -33,9 +33,6 @@ contract Grateful is IGrateful, Ownable2Step {
   mapping(address => bool) public tokensWhitelisted;
 
   /// @inheritdoc IGrateful
-  mapping(address => bool) public yieldingFunds;
-
-  /// @inheritdoc IGrateful
   mapping(address => AaveV3ERC4626) public vaults;
 
   /// @inheritdoc IGrateful
@@ -149,9 +146,10 @@ contract Grateful is IGrateful, Ownable2Step {
     address _merchant,
     address _token,
     uint256 _amount,
-    uint256 _id
+    uint256 _id,
+    bool _yieldFunds
   ) external onlyWhenTokenWhitelisted(_token) {
-    _processPayment(msg.sender, _merchant, _token, _amount, _id);
+    _processPayment(msg.sender, _merchant, _token, _amount, _id, _yieldFunds);
   }
 
   /// @inheritdoc IGrateful
@@ -161,19 +159,27 @@ contract Grateful is IGrateful, Ownable2Step {
     uint256 _amount,
     uint256 _salt,
     uint256 _paymentId,
+    bool _yieldFunds,
     address precomputed
   ) external onlyWhenTokensWhitelisted(_tokens) returns (OneTime oneTime) {
     oneTimePayments[precomputed] = true;
-    oneTime = new OneTime{salt: bytes32(_salt)}(IGrateful(address(this)), _tokens, _merchant, _amount, _paymentId);
+    oneTime =
+      new OneTime{salt: bytes32(_salt)}(IGrateful(address(this)), _tokens, _merchant, _amount, _paymentId, _yieldFunds);
     emit OneTimePaymentCreated(_merchant, _tokens, _amount);
   }
 
   /// @inheritdoc IGrateful
-  function receiveOneTimePayment(address _merchant, address _token, uint256 _paymentId, uint256 _amount) external {
+  function receiveOneTimePayment(
+    address _merchant,
+    address _token,
+    uint256 _paymentId,
+    uint256 _amount,
+    bool _yieldFunds
+  ) external {
     if (!oneTimePayments[msg.sender]) {
       revert Grateful_OneTimeNotFound();
     }
-    _processPayment(msg.sender, _merchant, _token, _amount, _paymentId);
+    _processPayment(msg.sender, _merchant, _token, _amount, _paymentId, _yieldFunds);
   }
 
   /// @inheritdoc IGrateful
@@ -182,10 +188,12 @@ contract Grateful is IGrateful, Ownable2Step {
     address[] memory _tokens,
     uint256 _amount,
     uint256 _salt,
-    uint256 _paymentId
+    uint256 _paymentId,
+    bool _yieldFunds
   ) external view returns (OneTime oneTime) {
-    bytes memory bytecode =
-      abi.encodePacked(type(OneTime).creationCode, abi.encode(address(this), _tokens, _merchant, _amount, _paymentId));
+    bytes memory bytecode = abi.encodePacked(
+      type(OneTime).creationCode, abi.encode(address(this), _tokens, _merchant, _amount, _paymentId, _yieldFunds)
+    );
     bytes32 bytecodeHash = keccak256(bytecode);
     bytes32 addressHash = keccak256(abi.encodePacked(bytes1(0xff), address(this), bytes32(_salt), bytecodeHash));
     address computedAddress = address(uint160(uint256(addressHash)));
@@ -266,11 +274,6 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   /// @inheritdoc IGrateful
-  function switchYieldingFunds() external {
-    yieldingFunds[msg.sender] = !yieldingFunds[msg.sender];
-  }
-
-  /// @inheritdoc IGrateful
   function setFee(
     uint256 _newFee
   ) external onlyOwner {
@@ -300,13 +303,15 @@ contract Grateful is IGrateful, Ownable2Step {
    * @param _token Address of the token.
    * @param _amount Amount of the token.
    * @param _paymentId ID of the payment
+   * @param _yieldFunds Whether to yield funds or not
    */
   function _processPayment(
     address _sender,
     address _merchant,
     address _token,
     uint256 _amount,
-    uint256 _paymentId
+    uint256 _paymentId,
+    bool _yieldFunds
   ) internal {
     // Transfer the full amount from the sender to this contract
     IERC20(_token).safeTransferFrom(_sender, address(this), _amount);
@@ -325,7 +330,7 @@ contract Grateful is IGrateful, Ownable2Step {
     IERC20(_token).safeTransfer(owner(), _amount - amountWithFee);
 
     // Proceed as before, paying the merchant
-    if (yieldingFunds[_merchant]) {
+    if (_yieldFunds) {
       AaveV3ERC4626 vault = vaults[_token];
       if (address(vault) == address(0)) {
         IERC20(_token).safeTransfer(_merchant, amountWithFee);
@@ -338,6 +343,6 @@ contract Grateful is IGrateful, Ownable2Step {
       IERC20(_token).safeTransfer(_merchant, amountWithFee);
     }
 
-    emit PaymentProcessed(_sender, _merchant, _token, _amount, yieldingFunds[_merchant], _paymentId);
+    emit PaymentProcessed(_sender, _merchant, _token, _amount, _yieldFunds, _paymentId);
   }
 }

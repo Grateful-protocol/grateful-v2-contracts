@@ -5,31 +5,24 @@ import {OneTime} from "contracts/OneTime.sol";
 import {IntegrationBase} from "test/integration/IntegrationBase.sol";
 
 contract IntegrationGreeter is IntegrationBase {
-  function _approveAndPay(address payer, address merchant, uint256 amount) internal {
+  function _approveAndPay(address payer, address merchant, uint256 amount, bool _yieldFunds) internal {
     uint256 paymentId = _grateful.calculateId(payer, merchant, address(_usdc), amount);
     vm.startPrank(payer);
     _usdc.approve(address(_grateful), amount);
-    _grateful.pay(merchant, address(_usdc), amount, paymentId);
+    _grateful.pay(merchant, address(_usdc), amount, paymentId, _yieldFunds);
     vm.stopPrank();
   }
 
   function test_Payment() public {
-    _approveAndPay(_payer, _merchant, _AMOUNT_USDC);
+    _approveAndPay(_payer, _merchant, _AMOUNT_USDC, false);
 
     assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _AMOUNT_USDC));
   }
 
   function test_PaymentYieldingFunds() public {
-    assertEq(_grateful.yieldingFunds(_merchant), false);
+    _approveAndPay(_payer, _merchant, _AMOUNT_USDC, true);
 
-    vm.prank(_merchant);
-    _grateful.switchYieldingFunds();
-
-    assertEq(_grateful.yieldingFunds(_merchant), true);
-
-    _approveAndPay(_payer, _merchant, _AMOUNT_USDC);
-
-    vm.warp(block.timestamp + 60 days);
+    vm.warp(block.timestamp + 1 days);
 
     vm.prank(_merchant);
     _grateful.withdraw(address(_usdc));
@@ -42,7 +35,8 @@ contract IntegrationGreeter is IntegrationBase {
     uint256 paymentId = _grateful.calculateId(_payer, _merchant, address(_usdc), _AMOUNT_USDC);
 
     // 2. Precompute address
-    address precomputed = address(_grateful.computeOneTimeAddress(_merchant, _tokens, _AMOUNT_USDC, 4, paymentId));
+    address precomputed =
+      address(_grateful.computeOneTimeAddress(_merchant, _tokens, _AMOUNT_USDC, 4, paymentId, false));
 
     // 3. Once the payment address is precomputed, the client sends the payment
     vm.prank(_payer);
@@ -50,7 +44,7 @@ contract IntegrationGreeter is IntegrationBase {
 
     // 4. Merchant calls api to make one time payment to his address
     vm.prank(_gratefulAutomation);
-    _grateful.createOneTimePayment(_merchant, _tokens, _AMOUNT_USDC, 4, paymentId, precomputed);
+    _grateful.createOneTimePayment(_merchant, _tokens, _AMOUNT_USDC, 4, paymentId, false, precomputed);
 
     // Merchant receives the payment
     assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _AMOUNT_USDC));
@@ -61,7 +55,8 @@ contract IntegrationGreeter is IntegrationBase {
     uint256 paymentId = _grateful.calculateId(_payer, _merchant, address(_usdc), _AMOUNT_USDC);
 
     // 2. Precompute address
-    address precomputed = address(_grateful.computeOneTimeAddress(_merchant, _tokens, _AMOUNT_USDC, 4, paymentId));
+    address precomputed =
+      address(_grateful.computeOneTimeAddress(_merchant, _tokens, _AMOUNT_USDC, 4, paymentId, false));
 
     // 3. Once the payment address is precomputed, the client sends the payment
     vm.prank(_payer);
@@ -69,7 +64,8 @@ contract IntegrationGreeter is IntegrationBase {
 
     // 4. Merchant calls api to make one time payment to his address
     vm.prank(_gratefulAutomation);
-    OneTime _oneTime = _grateful.createOneTimePayment(_merchant, _tokens, _AMOUNT_USDC, 4, paymentId, precomputed);
+    OneTime _oneTime =
+      _grateful.createOneTimePayment(_merchant, _tokens, _AMOUNT_USDC, 4, paymentId, false, precomputed);
 
     // Merchant receives the payment
     assertEq(_usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _AMOUNT_USDC));
@@ -95,7 +91,7 @@ contract IntegrationGreeter is IntegrationBase {
     _grateful.setCustomFee(200, _merchant);
 
     // Process payment with custom fee of 2%
-    _approveAndPay(_payer, _merchant, _AMOUNT_USDC);
+    _approveAndPay(_payer, _merchant, _AMOUNT_USDC, false);
 
     // Expected amounts
     uint256 expectedCustomFee = (_AMOUNT_USDC * 200) / 10_000; // 2% fee
@@ -115,7 +111,7 @@ contract IntegrationGreeter is IntegrationBase {
     vm.warp(block.timestamp + 1);
 
     // Process payment with custom fee of 0%
-    _approveAndPay(_payer, _merchant, _AMOUNT_USDC);
+    _approveAndPay(_payer, _merchant, _AMOUNT_USDC, false);
 
     // Expected amounts
     uint256 expectedZeroFee = 0; // 0% fee
@@ -141,7 +137,7 @@ contract IntegrationGreeter is IntegrationBase {
     vm.warp(block.timestamp + 1);
 
     // Process payment after unsetting custom fee
-    _approveAndPay(_payer, _merchant, _AMOUNT_USDC);
+    _approveAndPay(_payer, _merchant, _AMOUNT_USDC, false);
 
     // Expected amounts
     uint256 expectedFeeAfterUnset = (_AMOUNT_USDC * 100) / 10_000; // 1% fee
@@ -151,7 +147,7 @@ contract IntegrationGreeter is IntegrationBase {
     assertEq(
       _usdc.balanceOf(_merchant),
       expectedMerchantAmount + expectedMerchantAmount2 + expectedMerchantAmount3,
-      "Merchant balance mismatch after fourth payment"
+      "Merchant balance mismatch after third payment"
     );
     assertEq(
       _usdc.balanceOf(_owner),
@@ -168,31 +164,27 @@ contract IntegrationGreeter is IntegrationBase {
     uint256 paymentId = _grateful.calculateId(_payer, _merchant, address(_usdc), _AMOUNT_USDC);
 
     // 2. Precompute address
-    address precomputed = address(_grateful.computeOneTimeAddress(_merchant, _tokens, _AMOUNT_USDC, 4, paymentId));
+    address precomputed = address(_grateful.computeOneTimeAddress(_merchant, _tokens, _AMOUNT_USDC, 4, paymentId, true));
 
     // 3. Once the payment address is precomputed, the client sends the payment
     vm.prank(_payer);
     _usdc.transfer(precomputed, _AMOUNT_USDC);
 
-    // 4. Set merchant to yield funds
-    vm.prank(_merchant);
-    _grateful.switchYieldingFunds();
-
-    // 5. Grateful automation calls api to make one time payment to his address
+    // 4. Grateful automation calls api to make one time payment to his address
     vm.prank(_gratefulAutomation);
-    _grateful.createOneTimePayment(_merchant, _tokens, _AMOUNT_USDC, 4, paymentId, precomputed);
+    _grateful.createOneTimePayment(_merchant, _tokens, _AMOUNT_USDC, 4, paymentId, true, precomputed);
 
-    // 6. Advance time
+    // 5. Advance time so yield is generated
     vm.warp(block.timestamp + 1 days);
 
-    // 7. Merchant withdraws funds
+    // 6. Merchant withdraws funds
     vm.prank(_merchant);
     _grateful.withdraw(address(_usdc));
 
-    // 8. Check if merchant's balance is greater than the amount with fee applied
+    // 7. Check if merchant's balance is greater than the amount with fee applied
     assertGt(_usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _AMOUNT_USDC));
 
-    // 9. Check that owner holds the fee amount
+    // 8. Check that owner holds the fee amount
     uint256 feeAmount = _AMOUNT_USDC - _grateful.applyFee(_merchant, _AMOUNT_USDC);
     assertEq(_usdc.balanceOf(_owner), feeAmount);
   }
