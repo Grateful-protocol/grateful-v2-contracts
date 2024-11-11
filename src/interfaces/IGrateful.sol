@@ -178,47 +178,6 @@ interface IGrateful {
   function pay(address _merchant, address _token, uint256 _amount, uint256 _id) external;
 
   /**
-   * @notice Makes a payment to a merchant with payment splitting.
-   * @param _merchant Address of the merchant receiving payment.
-   * @param _token Address of the token used for payment.
-   * @param _amount Amount of the token to be paid.
-   * @param _id ID of the payment.
-   * @param _recipients List of recipients for payment splitting.
-   * @param _percentages Corresponding percentages for each recipient (in basis points, 10000 = 100%).
-   */
-  function pay(
-    address _merchant,
-    address _token,
-    uint256 _amount,
-    uint256 _id,
-    address[] calldata _recipients,
-    uint256[] calldata _percentages
-  ) external;
-
-  /**
-   * @notice Creates a one-time payment with payment splitting.
-   * @param _merchant Address of the merchant.
-   * @param _tokens Array of token addresses.
-   * @param _amount Amount of the token.
-   * @param _salt Salt used for address computation.
-   * @param _paymentId ID of the payment.
-   * @param precomputed Precomputed address of the OneTime contract.
-   * @param _recipients List of recipients for payment splitting.
-   * @param _percentages Corresponding percentages for each recipient.
-   * @return oneTime Address of the created OneTime contract.
-   */
-  function createOneTimePayment(
-    address _merchant,
-    address[] memory _tokens,
-    uint256 _amount,
-    uint256 _salt,
-    uint256 _paymentId,
-    address precomputed,
-    address[] calldata _recipients,
-    uint256[] calldata _percentages
-  ) external returns (OneTime oneTime);
-
-  /**
    * @notice Creates a one-time payment without payment splitting.
    * @param _merchant Address of the merchant.
    * @param _tokens Array of token addresses.
@@ -238,57 +197,13 @@ interface IGrateful {
   ) external returns (OneTime oneTime);
 
   /**
-   * @notice Receives a one-time payment with payment splitting.
-   * @param _merchant Address of the merchant.
-   * @param _token Address of the token.
-   * @param _paymentId ID of the payment.
-   * @param _amount Amount of the token.
-   * @param _recipients List of recipients for payment splitting.
-   * @param _percentages Corresponding percentages for each recipient.
-   */
-  function receiveOneTimePayment(
-    address _merchant,
-    address _token,
-    uint256 _paymentId,
-    uint256 _amount,
-    address[] calldata _recipients,
-    uint256[] calldata _percentages
-  ) external;
-
-  /**
    * @notice Receives a one-time payment without payment splitting.
    * @param _merchant Address of the merchant.
-   * @param _tokens Array of token addresses.
+   * @param _token Token address.
    * @param _paymentId ID of the payment.
    * @param _amount Amount of the token.
    */
-  function receiveOneTimePayment(
-    address _merchant,
-    IERC20[] memory _tokens,
-    uint256 _paymentId,
-    uint256 _amount
-  ) external;
-
-  /**
-   * @notice Computes the address of a one-time payment contract with payment splitting.
-   * @param _merchant Address of the merchant.
-   * @param _tokens Array of token addresses.
-   * @param _amount Amount of the token.
-   * @param _salt Salt used for address computation.
-   * @param _paymentId ID of the payment.
-   * @param _recipients List of recipients for payment splitting.
-   * @param _percentages Corresponding percentages for each recipient.
-   * @return oneTime Address of the computed OneTime contract.
-   */
-  function computeOneTimeAddress(
-    address _merchant,
-    address[] memory _tokens,
-    uint256 _amount,
-    uint256 _salt,
-    uint256 _paymentId,
-    address[] calldata _recipients,
-    uint256[] calldata _percentages
-  ) external view returns (OneTime oneTime);
+  function receiveOneTimePayment(address _merchant, address _token, uint256 _paymentId, uint256 _amount) external;
 
   /**
    * @notice Computes the address of a one-time payment contract without payment splitting.
