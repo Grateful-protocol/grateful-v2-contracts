@@ -172,16 +172,16 @@ interface IGrateful {
    * @notice Makes a payment to a merchant.
    * @param _merchant Address of the merchant receiving payment.
    * @param _token Address of the token used for payment.
-   * @param _AMOUNT_USDC Amount of the token to be paid.
+   * @param _amount Amount of the token to be paid.
    * @param _id ID of the payment.
    */
-  function pay(address _merchant, address _token, uint256 _AMOUNT_USDC, uint256 _id) external;
+  function pay(address _merchant, address _token, uint256 _amount, uint256 _id) external;
 
   /**
    * @notice Makes a payment to a merchant with payment splitting.
    * @param _merchant Address of the merchant receiving payment.
    * @param _token Address of the token used for payment.
-   * @param _AMOUNT_USDC Amount of the token to be paid.
+   * @param _amount Amount of the token to be paid.
    * @param _id ID of the payment.
    * @param _recipients List of recipients for payment splitting.
    * @param _percentages Corresponding percentages for each recipient (in basis points, 10000 = 100%).
@@ -189,7 +189,7 @@ interface IGrateful {
   function pay(
     address _merchant,
     address _token,
-    uint256 _AMOUNT_USDC,
+    uint256 _amount,
     uint256 _id,
     address[] calldata _recipients,
     uint256[] calldata _percentages
@@ -199,7 +199,7 @@ interface IGrateful {
    * @notice Creates a one-time payment with payment splitting.
    * @param _merchant Address of the merchant.
    * @param _tokens Array of token addresses.
-   * @param _AMOUNT_USDC Amount of the token.
+   * @param _amount Amount of the token.
    * @param _salt Salt used for address computation.
    * @param _paymentId ID of the payment.
    * @param precomputed Precomputed address of the OneTime contract.
@@ -210,7 +210,7 @@ interface IGrateful {
   function createOneTimePayment(
     address _merchant,
     address[] memory _tokens,
-    uint256 _AMOUNT_USDC,
+    uint256 _amount,
     uint256 _salt,
     uint256 _paymentId,
     address precomputed,
@@ -222,7 +222,7 @@ interface IGrateful {
    * @notice Creates a one-time payment without payment splitting.
    * @param _merchant Address of the merchant.
    * @param _tokens Array of token addresses.
-   * @param _AMOUNT_USDC Amount of the token.
+   * @param _amount Amount of the token.
    * @param _salt Salt used for address computation.
    * @param _paymentId ID of the payment.
    * @param precomputed Precomputed address of the OneTime contract.
@@ -231,7 +231,7 @@ interface IGrateful {
   function createOneTimePayment(
     address _merchant,
     address[] memory _tokens,
-    uint256 _AMOUNT_USDC,
+    uint256 _amount,
     uint256 _salt,
     uint256 _paymentId,
     address precomputed
@@ -242,7 +242,7 @@ interface IGrateful {
    * @param _merchant Address of the merchant.
    * @param _token Address of the token.
    * @param _paymentId ID of the payment.
-   * @param _AMOUNT_USDC Amount of the token.
+   * @param _amount Amount of the token.
    * @param _recipients List of recipients for payment splitting.
    * @param _percentages Corresponding percentages for each recipient.
    */
@@ -250,7 +250,7 @@ interface IGrateful {
     address _merchant,
     address _token,
     uint256 _paymentId,
-    uint256 _AMOUNT_USDC,
+    uint256 _amount,
     address[] calldata _recipients,
     uint256[] calldata _percentages
   ) external;
@@ -260,20 +260,20 @@ interface IGrateful {
    * @param _merchant Address of the merchant.
    * @param _tokens Array of token addresses.
    * @param _paymentId ID of the payment.
-   * @param _AMOUNT_USDC Amount of the token.
+   * @param _amount Amount of the token.
    */
   function receiveOneTimePayment(
     address _merchant,
     IERC20[] memory _tokens,
     uint256 _paymentId,
-    uint256 _AMOUNT_USDC
+    uint256 _amount
   ) external;
 
   /**
    * @notice Computes the address of a one-time payment contract with payment splitting.
    * @param _merchant Address of the merchant.
    * @param _tokens Array of token addresses.
-   * @param _AMOUNT_USDC Amount of the token.
+   * @param _amount Amount of the token.
    * @param _salt Salt used for address computation.
    * @param _paymentId ID of the payment.
    * @param _recipients List of recipients for payment splitting.
@@ -283,7 +283,7 @@ interface IGrateful {
   function computeOneTimeAddress(
     address _merchant,
     address[] memory _tokens,
-    uint256 _AMOUNT_USDC,
+    uint256 _amount,
     uint256 _salt,
     uint256 _paymentId,
     address[] calldata _recipients,
@@ -294,7 +294,7 @@ interface IGrateful {
    * @notice Computes the address of a one-time payment contract without payment splitting.
    * @param _merchant Address of the merchant.
    * @param _tokens Array of token addresses.
-   * @param _AMOUNT_USDC Amount of the token.
+   * @param _amount Amount of the token.
    * @param _salt Salt used for address computation.
    * @param _paymentId ID of the payment.
    * @return oneTime Address of the computed OneTime contract.
@@ -302,7 +302,7 @@ interface IGrateful {
   function computeOneTimeAddress(
     address _merchant,
     address[] memory _tokens,
-    uint256 _AMOUNT_USDC,
+    uint256 _amount,
     uint256 _salt,
     uint256 _paymentId
   ) external view returns (OneTime oneTime);
@@ -347,23 +347,23 @@ interface IGrateful {
    * @param _sender Address of the sender.
    * @param _merchant Address of the merchant.
    * @param _token Address of the token.
-   * @param _AMOUNT_USDC Amount of the token.
+   * @param _amount Amount of the token.
    * @return id ID of the payment.
    */
   function calculateId(
     address _sender,
     address _merchant,
     address _token,
-    uint256 _AMOUNT_USDC
+    uint256 _amount
   ) external view returns (uint256 id);
 
   /**
    * @notice Applies the fee to an amount.
    * @param _merchant Address of the merchant.
-   * @param _AMOUNT_USDC Amount before fee.
+   * @param _amount Amount before fee.
    * @return amountWithFee Amount after fee is applied.
    */
-  function applyFee(address _merchant, uint256 _AMOUNT_USDC) external view returns (uint256 amountWithFee);
+  function applyFee(address _merchant, uint256 _amount) external view returns (uint256 amountWithFee);
 
   /**
    * @notice Sets a new fee.

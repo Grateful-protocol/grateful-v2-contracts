@@ -17,7 +17,7 @@ contract OneTime {
     IGrateful _grateful,
     address[] memory _tokens,
     address _merchant,
-    uint256 _AMOUNT_USDC,
+    uint256 _amount,
     uint256 _paymentId,
     address[] memory _recipients,
     uint256[] memory _percentages
@@ -26,18 +26,18 @@ contract OneTime {
 
     for (uint256 i = 0; i < _tokens.length; i++) {
       IERC20 token = IERC20(_tokens[i]);
-      if (token.balanceOf(address(this)) >= _AMOUNT_USDC) {
-        token.safeIncreaseAllowance(address(_grateful), _AMOUNT_USDC);
-        _grateful.receiveOneTimePayment(_merchant, address(token), _paymentId, _AMOUNT_USDC, _recipients, _percentages);
+      if (token.balanceOf(address(this)) >= _amount) {
+        token.safeIncreaseAllowance(address(_grateful), _amount);
+        _grateful.receiveOneTimePayment(_merchant, address(token), _paymentId, _amount, _recipients, _percentages);
       }
     }
   }
 
-  function rescueFunds(IERC20 _token, address _receiver, uint256 _AMOUNT_USDC) external {
+  function rescueFunds(IERC20 _token, address _receiver, uint256 _amount) external {
     if (msg.sender != grateful.owner()) {
       revert Ownable.OwnableUnauthorizedAccount(msg.sender);
     }
 
-    IERC20(_token).safeTransfer(_receiver, _AMOUNT_USDC);
+    IERC20(_token).safeTransfer(_receiver, _amount);
   }
 }

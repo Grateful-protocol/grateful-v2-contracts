@@ -106,6 +106,16 @@ yarn coverage
 
 Configure the `.env` variables.
 
+### Private Key management
+
+Deployment private keys are encripted using ERC2335. Run:
+
+```bash
+cast wallet import nameOfAccountGoesHere --interactive
+```
+
+And you will be able to deploy with our scripts
+
 ### Sepolia
 
 ```bash
