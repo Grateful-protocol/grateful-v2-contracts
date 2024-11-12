@@ -57,9 +57,7 @@ contract Grateful is IGrateful, Ownable2Step {
   modifier onlyWhenTokenWhitelisted(
     address _token
   ) {
-    if (!tokensWhitelisted[_token]) {
-      revert Grateful_TokenNotWhitelisted();
-    }
+    _ensureTokenWhitelisted(_token);
     _;
   }
 
@@ -67,9 +65,7 @@ contract Grateful is IGrateful, Ownable2Step {
     address[] memory _tokens
   ) {
     for (uint256 i = 0; i < _tokens.length; i++) {
-      if (!tokensWhitelisted[_tokens[i]]) {
-        revert Grateful_TokenNotWhitelisted();
-      }
+      _ensureTokenWhitelisted(_tokens[i]);
     }
     _;
   }
@@ -136,9 +132,9 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   /// @inheritdoc IGrateful
-  function addVault(address _token, address _usdcVault) external onlyOwner onlyWhenTokenWhitelisted(_token) {
-    vaults[_token] = AaveV3ERC4626(_usdcVault);
-    IERC20(_token).safeIncreaseAllowance(address(_usdcVault), type(uint256).max);
+  function addVault(address _token, address _vault) external onlyOwner onlyWhenTokenWhitelisted(_token) {
+    vaults[_token] = AaveV3ERC4626(_vault);
+    IERC20(_token).safeIncreaseAllowance(address(_vault), type(uint256).max);
   }
 
   /// @inheritdoc IGrateful
@@ -297,6 +293,18 @@ contract Grateful is IGrateful, Ownable2Step {
     //////////////////////////////////////////////////////////////*/
 
   /**
+   * @dev Reverts if the provided token is not whitelisted.
+   * @param _token The address of the token to check.
+   */
+  function _ensureTokenWhitelisted(
+    address _token
+  ) private view {
+    if (!tokensWhitelisted[_token]) {
+      revert Grateful_TokenNotWhitelisted();
+    }
+  }
+
+  /**
    * @notice Processes a payment.
    * @param _sender Address of the sender.
    * @param _merchant Address of the merchant.
@@ -329,7 +337,6 @@ contract Grateful is IGrateful, Ownable2Step {
     // Transfer fee to owner
     IERC20(_token).safeTransfer(owner(), _amount - amountWithFee);
 
-    // Proceed as before, paying the merchant
     if (_yieldFunds) {
       AaveV3ERC4626 vault = vaults[_token];
       if (address(vault) == address(0)) {
