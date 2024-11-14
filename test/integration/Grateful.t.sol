@@ -25,9 +25,7 @@ contract IntegrationGreeter is IntegrationBase {
     vm.warp(block.timestamp + 1 days);
 
     // Get total assets
-    AaveV3Vault _vault = _grateful.vaults(address(_usdc));
-    uint256 _shares = _grateful.shares(_merchant, address(_usdc));
-    uint256 _assets = _vault.convertToAssets(_shares);
+    uint256 _assets = _grateful.calculateAssets(_merchant, address(_usdc));
 
     vm.prank(_merchant);
     _grateful.withdraw(address(_usdc));

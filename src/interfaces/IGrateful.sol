@@ -259,6 +259,14 @@ interface IGrateful {
   function withdrawMultiple(address[] memory _tokens, uint256[] memory _assets) external;
 
   /**
+   * @notice Calculates the assets of a merchant in a vault.
+   * @param _merchant Address of the merchant.
+   * @param _token Address of the token.
+   * @return assets The total assets.
+   */
+  function calculateAssets(address _merchant, address _token) external view returns (uint256 assets);
+
+  /**
    * @notice Calculates the ID of a payment.
    * @param _sender Address of the sender.
    * @param _merchant Address of the merchant.

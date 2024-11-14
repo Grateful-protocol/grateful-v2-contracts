@@ -96,6 +96,13 @@ contract Grateful is IGrateful, Ownable2Step {
     //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IGrateful
+  function calculateAssets(address _merchant, address _token) public view returns (uint256 assets) {
+    AaveV3Vault _vault = vaults[_token];
+    uint256 _shares = shares[_merchant][_token];
+    assets = _vault.convertToAssets(_shares);
+  }
+
+  /// @inheritdoc IGrateful
   function calculateId(
     address _sender,
     address _merchant,
