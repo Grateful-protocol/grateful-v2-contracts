@@ -4,7 +4,8 @@ pragma solidity 0.8.26;
 import {OneTime} from "contracts/OneTime.sol";
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {AaveV3ERC4626, IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
+import {AaveV3Vault} from "contracts/vaults/AaveV3Vault.sol";
+import {IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
 /**
  * @title Grateful Contract Interface
@@ -108,7 +109,7 @@ interface IGrateful {
   /// @return Address of the vault contract.
   function vaults(
     address _token
-  ) external view returns (AaveV3ERC4626);
+  ) external view returns (AaveV3Vault);
 
   /// @notice Returns the amount of shares for a merchant.
   /// @param _merchant Address of the merchant.

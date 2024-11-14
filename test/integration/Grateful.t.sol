@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {OneTime} from "contracts/OneTime.sol";
-import {IntegrationBase} from "test/integration/IntegrationBase.sol";
+import {AaveV3Vault, IntegrationBase} from "test/integration/IntegrationBase.sol";
 
 contract IntegrationGreeter is IntegrationBase {
   function _approveAndPay(address payer, address merchant, uint256 amount, bool _yieldFunds) internal {
@@ -24,9 +24,15 @@ contract IntegrationGreeter is IntegrationBase {
 
     vm.warp(block.timestamp + 1 days);
 
+    // Get total assets
+    AaveV3Vault _vault = _grateful.vaults(address(_usdc));
+    uint256 _shares = _grateful.shares(_merchant, address(_usdc));
+    uint256 _assets = _vault.convertToAssets(_shares);
+
     vm.prank(_merchant);
     _grateful.withdraw(address(_usdc));
 
+    assertEq(_assets, _usdc.balanceOf(_merchant));
     assertGt(_usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _AMOUNT_USDC));
   }
 

@@ -8,11 +8,12 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {OneTime} from "contracts/OneTime.sol";
+import {AaveV3Vault} from "contracts/vaults/AaveV3Vault.sol";
 
 import {IGrateful} from "interfaces/IGrateful.sol";
 
 import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
-import {AaveV3ERC4626, IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
+import {IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
 /**
  * @title Grateful Contract
@@ -33,7 +34,7 @@ contract Grateful is IGrateful, Ownable2Step {
   mapping(address => bool) public tokensWhitelisted;
 
   /// @inheritdoc IGrateful
-  mapping(address => AaveV3ERC4626) public vaults;
+  mapping(address => AaveV3Vault) public vaults;
 
   /// @inheritdoc IGrateful
   mapping(address => mapping(address => uint256)) public shares;
@@ -133,7 +134,7 @@ contract Grateful is IGrateful, Ownable2Step {
 
   /// @inheritdoc IGrateful
   function addVault(address _token, address _vault) external onlyOwner onlyWhenTokenWhitelisted(_token) {
-    vaults[_token] = AaveV3ERC4626(_vault);
+    vaults[_token] = AaveV3Vault(_vault);
     IERC20(_token).safeIncreaseAllowance(address(_vault), type(uint256).max);
   }
 
@@ -200,7 +201,7 @@ contract Grateful is IGrateful, Ownable2Step {
   function withdraw(
     address _token
   ) external onlyWhenTokenWhitelisted(_token) {
-    AaveV3ERC4626 vault = vaults[_token];
+    AaveV3Vault vault = vaults[_token];
     if (address(vault) == address(0)) {
       revert Grateful_usdcVaultNotSet();
     }
@@ -211,7 +212,7 @@ contract Grateful is IGrateful, Ownable2Step {
 
   /// @inheritdoc IGrateful
   function withdraw(address _token, uint256 _assets) external onlyWhenTokenWhitelisted(_token) {
-    AaveV3ERC4626 vault = vaults[_token];
+    AaveV3Vault vault = vaults[_token];
     if (address(vault) == address(0)) {
       revert Grateful_usdcVaultNotSet();
     }
@@ -231,7 +232,7 @@ contract Grateful is IGrateful, Ownable2Step {
     uint256 tokensLength = _tokens.length;
     for (uint256 i = 0; i < tokensLength; i++) {
       address _token = _tokens[i];
-      AaveV3ERC4626 vault = vaults[_token];
+      AaveV3Vault vault = vaults[_token];
       if (address(vault) == address(0)) {
         revert Grateful_usdcVaultNotSet();
       }
@@ -255,7 +256,7 @@ contract Grateful is IGrateful, Ownable2Step {
     for (uint256 i = 0; i < tokensLength; i++) {
       address _token = _tokens[i];
       uint256 _assetsToWithdraw = _assets[i];
-      AaveV3ERC4626 vault = vaults[_token];
+      AaveV3Vault vault = vaults[_token];
       if (address(vault) == address(0)) {
         revert Grateful_usdcVaultNotSet();
       }
@@ -338,7 +339,7 @@ contract Grateful is IGrateful, Ownable2Step {
     IERC20(_token).safeTransfer(owner(), _amount - amountWithFee);
 
     if (_yieldFunds) {
-      AaveV3ERC4626 vault = vaults[_token];
+      AaveV3Vault vault = vaults[_token];
       if (address(vault) == address(0)) {
         IERC20(_token).safeTransfer(_merchant, amountWithFee);
       } else {
