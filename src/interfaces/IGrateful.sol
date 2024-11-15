@@ -91,10 +91,22 @@ interface IGrateful {
    */
   event VaultAdded(address indexed token, address indexed vault);
 
+  /**
+   * @notice Emitted when a token is removed from the whitelist.
+   * @param token Address of the token removed.
+   */
+  event TokenRemoved(address indexed token);
+
+  /**
+   * @notice Emitted when a vault is removed for a token.
+   * @param token Address of the token.
+   * @param vault Address of the vault removed.
+   */
+  event VaultRemoved(address indexed token, address indexed vault);
+
   /*///////////////////////////////////////////////////////////////
                                   ERRORS
     //////////////////////////////////////////////////////////////*/
-
   /// @notice Thrown when the token is not whitelisted.
   error Grateful_TokenNotWhitelisted();
 
@@ -118,6 +130,9 @@ interface IGrateful {
 
   /// @notice Thrown when the user tries to withdraw more shares than they have.
   error Grateful_WithdrawExceedsShares();
+
+  /// @notice Thrown when attempting to remove a token or vault that does not exist.
+  error Grateful_TokenOrVaultNotFound();
 
   /*///////////////////////////////////////////////////////////////
                                  VARIABLES
@@ -193,6 +208,22 @@ interface IGrateful {
    * @param _usdcVault Address of the vault contract.
    */
   function addVault(address _token, address _usdcVault) external;
+
+  /**
+   * @notice Removes a token from the whitelist.
+   * @param _token Address of the token to be removed.
+   */
+  function removeToken(
+    address _token
+  ) external;
+
+  /**
+   * @notice Removes a vault for a specific token.
+   * @param _token Address of the token.
+   */
+  function removeVault(
+    address _token
+  ) external;
 
   /**
    * @notice Makes a payment to a merchant.

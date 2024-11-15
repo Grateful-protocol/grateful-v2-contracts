@@ -87,7 +87,7 @@ contract Grateful is IGrateful, Ownable2Step {
     for (uint256 i = 0; i < _tokens.length; i++) {
       tokensWhitelisted[_tokens[i]] = true;
       IERC20 _token = IERC20(_tokens[i]);
-      _token.safeIncreaseAllowance(address(_aavePool), type(uint256).max);
+      _token.forceApprove(address(_aavePool), type(uint256).max);
     }
   }
 
@@ -136,8 +136,21 @@ contract Grateful is IGrateful, Ownable2Step {
     address _token
   ) external onlyOwner {
     tokensWhitelisted[_token] = true;
-    IERC20(_token).safeIncreaseAllowance(address(aavePool), type(uint256).max);
+    IERC20(_token).forceApprove(address(aavePool), type(uint256).max);
     emit TokenAdded(_token);
+  }
+
+  /// @inheritdoc IGrateful
+  function removeToken(
+    address _token
+  ) external onlyOwner {
+    if (!tokensWhitelisted[_token]) {
+      revert Grateful_TokenOrVaultNotFound();
+    }
+    delete tokensWhitelisted[_token];
+    IERC20(_token).forceApprove(address(aavePool), 0);
+    IERC20(_token).forceApprove(address(vaults[_token]), 0);
+    emit TokenRemoved(_token);
   }
 
   /// @inheritdoc IGrateful
@@ -145,6 +158,19 @@ contract Grateful is IGrateful, Ownable2Step {
     vaults[_token] = AaveV3Vault(_vault);
     IERC20(_token).safeIncreaseAllowance(address(_vault), type(uint256).max);
     emit VaultAdded(_token, _vault);
+  }
+
+  /// @inheritdoc IGrateful
+  function removeVault(
+    address _token
+  ) external onlyOwner onlyWhenTokenWhitelisted(_token) {
+    AaveV3Vault vault = vaults[_token];
+    if (address(vault) == address(0)) {
+      revert Grateful_TokenOrVaultNotFound();
+    }
+    IERC20(_token).forceApprove(address(vault), 0);
+    emit VaultRemoved(_token, address(vault));
+    delete vaults[_token];
   }
 
   /// @inheritdoc IGrateful
