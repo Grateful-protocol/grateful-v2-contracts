@@ -137,12 +137,14 @@ contract Grateful is IGrateful, Ownable2Step {
   ) external onlyOwner {
     tokensWhitelisted[_token] = true;
     IERC20(_token).safeIncreaseAllowance(address(aavePool), type(uint256).max);
+    emit TokenAdded(_token);
   }
 
   /// @inheritdoc IGrateful
   function addVault(address _token, address _vault) external onlyOwner onlyWhenTokenWhitelisted(_token) {
     vaults[_token] = AaveV3Vault(_vault);
     IERC20(_token).safeIncreaseAllowance(address(_vault), type(uint256).max);
+    emit VaultAdded(_token, _vault);
   }
 
   /// @inheritdoc IGrateful
@@ -282,11 +284,13 @@ contract Grateful is IGrateful, Ownable2Step {
     uint256 _newFee
   ) external onlyOwner {
     fee = _newFee;
+    emit FeeUpdated(_newFee);
   }
 
   /// @inheritdoc IGrateful
   function setCustomFee(uint256 _newFee, address _merchant) external onlyOwner {
     customFees[_merchant] = CustomFee({isSet: true, fee: _newFee});
+    emit CustomFeeUpdated(_merchant, _newFee);
   }
 
   /// @inheritdoc IGrateful
@@ -294,6 +298,7 @@ contract Grateful is IGrateful, Ownable2Step {
     address _merchant
   ) external onlyOwner {
     delete customFees[_merchant];
+    emit CustomFeeUnset(_merchant);
   }
 
   /*//////////////////////////////////////////////////////////////

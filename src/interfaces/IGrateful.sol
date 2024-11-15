@@ -59,6 +59,38 @@ interface IGrateful {
    */
   event Withdraw(address indexed user, address indexed token, uint256 amount);
 
+  /**
+   * @notice Emitted when the default fee is updated.
+   * @param newFee The new fee in basis points.
+   */
+  event FeeUpdated(uint256 newFee);
+
+  /**
+   * @notice Emitted when a custom fee is set for a merchant.
+   * @param merchant Address of the merchant.
+   * @param newFee The new custom fee in basis points.
+   */
+  event CustomFeeUpdated(address indexed merchant, uint256 newFee);
+
+  /**
+   * @notice Emitted when a custom fee is unset for a merchant.
+   * @param merchant Address of the merchant.
+   */
+  event CustomFeeUnset(address indexed merchant);
+
+  /**
+   * @notice Emitted when a new token is added to the whitelist.
+   * @param token Address of the token added.
+   */
+  event TokenAdded(address indexed token);
+
+  /**
+   * @notice Emitted when a new vault is added for a token.
+   * @param token Address of the token.
+   * @param vault Address of the vault added.
+   */
+  event VaultAdded(address indexed token, address indexed vault);
+
   /*///////////////////////////////////////////////////////////////
                                   ERRORS
     //////////////////////////////////////////////////////////////*/

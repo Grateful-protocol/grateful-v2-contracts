@@ -9,8 +9,6 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IPool, IRewardsController} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
 contract Deploy is Script {
-  error UnsupportedChain();
-
   struct VaultDeploymentParams {
     address token;
     address aToken;
@@ -23,6 +21,8 @@ contract Deploy is Script {
     uint256 initialFee;
     VaultDeploymentParams[] vaults;
   }
+
+  error UnsupportedChain();
 
   function getDeploymentParams(
     uint256 chainId
