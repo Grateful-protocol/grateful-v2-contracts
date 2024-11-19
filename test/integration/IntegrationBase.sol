@@ -26,8 +26,6 @@ contract IntegrationBase is Test, Deploy {
                                     CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
-  string internal constant _FORKED_NETWORK = "mainnet";
-  uint256 internal constant _FORK_BLOCK = 18_920_905;
   uint256 internal constant _FEE = 100; // 1% fee
   uint256 internal constant _PAYMENT_SALT = 4; // Salt for computing payment addresses
   bool internal constant _YIELDING_FUNDS = true;
@@ -60,8 +58,11 @@ contract IntegrationBase is Test, Deploy {
     //////////////////////////////////////////////////////////////*/
 
   function setUp() public {
+    string memory forkedNetwork = vm.envString("FORKED_NETWORK");
+    uint256 forkBlock = vm.envUint("FORK_BLOCK");
+
     // Use fork block from deployment parameters
-    vm.createSelectFork(vm.rpcUrl(_FORKED_NETWORK), _FORK_BLOCK);
+    vm.createSelectFork(vm.rpcUrl(forkedNetwork), forkBlock);
     vm.startPrank(_owner);
 
     // Get deployment parameters

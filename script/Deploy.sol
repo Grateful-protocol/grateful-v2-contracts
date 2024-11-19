@@ -122,8 +122,9 @@ contract Deploy is Script {
   function run() public {
     DeploymentParams memory _params = getDeploymentParams(block.chainid);
 
-    /* vm.startBroadcast(); */
-
+    if (!vm.envBool("TESTING")) {
+      vm.startBroadcast();
+    }
     // Deploy Grateful contract
     grateful = new Grateful(_params.tokens, _params.aavePool, _params.initialFee);
 
@@ -154,6 +155,8 @@ contract Deploy is Script {
     // Add TestToken to Grateful (if needed)
     /* grateful.addToken(address(_testToken)); */
 
-    /* vm.stopBroadcast(); */
+    if (!vm.envBool("TESTING")) {
+      vm.stopBroadcast();
+    }
   }
 }
