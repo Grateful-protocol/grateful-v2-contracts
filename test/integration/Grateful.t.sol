@@ -36,13 +36,21 @@ contract IntegrationGrateful is IntegrationBase {
     }
   }
 
-  function test_PaymentYieldingFunds() public {
+  function test_PaymentYieldingFunds(
+    uint256 amountMultiplier
+  ) public {
+    vm.assume(amountMultiplier > 10);
+    vm.assume(amountMultiplier < 1000);
+
     for (uint256 i = 0; i < _tokens.length; i++) {
       address tokenAddr = _tokens[i];
       string memory symbol = _tokenSymbols[tokenAddr];
-      uint256 amount = _tokenAmounts[tokenAddr];
+      uint256 amount = _tokenAmounts[tokenAddr] * amountMultiplier;
 
       IERC20 token = IERC20(tokenAddr);
+
+      // Flow correctly works only if vault has any deposit
+      _approveAndPay(_user, _user2, tokenAddr, 1, _YIELDING_FUNDS);
 
       // Capture owner's initial balance before payment
       uint256 ownerInitialBalance = token.balanceOf(_owner);
@@ -158,11 +166,16 @@ contract IntegrationGrateful is IntegrationBase {
   }
 
   // Tests for One-Time Payments
-  function test_OneTimePayment() public {
+  function test_OneTimePayment(
+    uint256 amountMultiplier
+  ) public {
+    vm.assume(amountMultiplier > 10);
+    vm.assume(amountMultiplier < 1000);
+
     for (uint256 i = 0; i < _tokens.length; i++) {
       address tokenAddr = _tokens[i];
       string memory symbol = _tokenSymbols[tokenAddr];
-      uint256 amount = _tokenAmounts[tokenAddr];
+      uint256 amount = _tokenAmounts[tokenAddr] * amountMultiplier;
 
       _setupAndExecuteOneTimePayment(_user, _merchant, tokenAddr, amount, _PAYMENT_SALT, _NOT_YIELDING_FUNDS);
 
@@ -176,13 +189,21 @@ contract IntegrationGrateful is IntegrationBase {
     }
   }
 
-  function test_OneTimePaymentYieldingFunds() public {
+  function test_OneTimePaymentYieldingFunds(
+    uint256 amountMultiplier
+  ) public {
+    vm.assume(amountMultiplier > 10);
+    vm.assume(amountMultiplier < 1000);
+
     for (uint256 i = 0; i < _tokens.length; i++) {
       address tokenAddr = _tokens[i];
       string memory symbol = _tokenSymbols[tokenAddr];
-      uint256 amount = _tokenAmounts[tokenAddr];
+      uint256 amount = _tokenAmounts[tokenAddr] * amountMultiplier;
 
       IERC20 token = IERC20(tokenAddr);
+
+      // Flow correctly works only if vault has any deposit
+      _approveAndPay(_user, _user2, tokenAddr, 1, _YIELDING_FUNDS);
 
       // Capture owner's initial balance before payment
       uint256 ownerInitialBalance = token.balanceOf(_owner);
@@ -226,11 +247,16 @@ contract IntegrationGrateful is IntegrationBase {
     }
   }
 
-  function test_OverpaidOneTimePayment() public {
+  function test_OverpaidOneTimePayment(
+    uint256 amountMultiplier
+  ) public {
+    vm.assume(amountMultiplier > 10);
+    vm.assume(amountMultiplier < 1000);
+
     for (uint256 i = 0; i < _tokens.length; i++) {
       address tokenAddr = _tokens[i];
       string memory symbol = _tokenSymbols[tokenAddr];
-      uint256 amount = _tokenAmounts[tokenAddr];
+      uint256 amount = _tokenAmounts[tokenAddr] * amountMultiplier;
 
       uint256 paymentId = _grateful.calculateId(_user, _merchant, tokenAddr, amount);
       address precomputed = address(
@@ -277,7 +303,12 @@ contract IntegrationGrateful is IntegrationBase {
     }
   }
 
-  function test_PaymentWithCustomFee() public {
+  function test_PaymentWithCustomFee(
+    uint256 amountMultiplier
+  ) public {
+    vm.assume(amountMultiplier > 10);
+    vm.assume(amountMultiplier < 1000);
+
     uint256[] memory customFees = new uint256[](3);
     customFees[0] = 200; // 2%
     customFees[1] = 0; // 0%
@@ -286,7 +317,7 @@ contract IntegrationGrateful is IntegrationBase {
     for (uint256 i = 0; i < _tokens.length; i++) {
       address tokenAddr = _tokens[i];
       string memory symbol = _tokenSymbols[tokenAddr];
-      uint256 amount = _tokenAmounts[tokenAddr];
+      uint256 amount = _tokenAmounts[tokenAddr] * amountMultiplier;
 
       uint256 expectedOwnerBalance = 0;
       uint256 expectedMerchantBalance = 0;
