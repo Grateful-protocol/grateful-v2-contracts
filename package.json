@@ -38,9 +38,6 @@
     "test/**/*.sol": "yarn lint:sol-tests",
     "package.json": "sort-package-json"
   },
-  "dependencies": {
-    "solmate": "^6.2.0"
-  },
   "devDependencies": {
     "@aave/core-v3": "^1.19.3",
     "@commitlint/cli": "19.3.0",
@@ -52,6 +49,7 @@
     "husky": ">=8",
     "lint-staged": ">=10",
     "solhint-community": "4.0.0",
+    "solmate": "^6.2.0",
     "sort-package-json": "2.10.0",
     "yield-daddy": "timeless-fi/yield-daddy"
   }
