@@ -105,6 +105,9 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
    * @param _initialFee Initial fee in basis points (10000 = 100%).
    */
   constructor(address[] memory _tokens, IPool _aavePool, uint256 _initialFee) Ownable(msg.sender) {
+    if (address(_aavePool) == address(0)) {
+      revert Grateful_InvalidAddress();
+    }
     aavePool = _aavePool;
     fee = _initialFee;
     uint256 tokensLength = _tokens.length;
@@ -182,6 +185,9 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   function addToken(
     address _token
   ) external onlyOwner {
+    if (_token == address(0)) {
+      revert Grateful_InvalidAddress();
+    }
     tokensWhitelisted[_token] = true;
     IERC20 token = IERC20(_token);
     token.forceApprove(address(aavePool), type(uint256).max);
@@ -204,6 +210,9 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
 
   /// @inheritdoc IGrateful
   function addVault(address _token, address _vault) external onlyOwner onlyWhenTokenWhitelisted(_token) {
+    if (_vault == address(0)) {
+      revert Grateful_InvalidAddress();
+    }
     vaults[_token] = AaveV3Vault(_vault);
     IERC20 token = IERC20(_token);
     token.safeIncreaseAllowance(address(_vault), type(uint256).max);
@@ -232,6 +241,9 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     uint256 _id,
     bool _yieldFunds
   ) external onlyWhenTokenWhitelisted(_token) {
+    if (_merchant == address(0)) {
+      revert Grateful_InvalidAddress();
+    }
     _processPayment(msg.sender, _merchant, _token, _amount, _id, _yieldFunds);
   }
 
@@ -245,6 +257,9 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     bool _yieldFunds,
     address _precomputed
   ) external onlyWhenTokensWhitelisted(_tokens) returns (OneTime oneTime) {
+    if (_merchant == address(0)) {
+      revert Grateful_InvalidAddress();
+    }
     oneTimePayments[_precomputed] = true;
     oneTime =
       new OneTime{salt: bytes32(_salt)}(IGrateful(address(this)), _tokens, _merchant, _amount, _paymentId, _yieldFunds);
@@ -261,6 +276,9 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   ) external {
     if (!oneTimePayments[msg.sender]) {
       revert Grateful_OneTimeNotFound();
+    }
+    if (_merchant == address(0) || _token == address(0)) {
+      revert Grateful_InvalidAddress();
     }
     _processPayment(msg.sender, _merchant, _token, _amount, _paymentId, _yieldFunds);
   }
@@ -349,6 +367,9 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
 
   /// @inheritdoc IGrateful
   function setCustomFee(uint256 _newFee, address _merchant) external onlyOwner {
+    if (_merchant == address(0)) {
+      revert Grateful_InvalidAddress();
+    }
     if (_newFee > MAX_FEE) {
       revert Grateful_FeeRateTooHigh();
     }
@@ -360,6 +381,9 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   function unsetCustomFee(
     address _merchant
   ) external onlyOwner {
+    if (_merchant == address(0)) {
+      revert Grateful_InvalidAddress();
+    }
     delete customFees[_merchant];
     emit CustomFeeUnset(_merchant);
   }
@@ -400,6 +424,9 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     // Validate amount
     if (_amount == 0) {
       revert Grateful_InvalidAmount();
+    }
+    if (_merchant == address(0) || _token == address(0)) {
+      revert Grateful_InvalidAddress();
     }
 
     // Check payment id
@@ -445,6 +472,9 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
    * @param _isFullWithdrawal Indicates if it's a full withdrawal.
    */
   function _withdraw(address _token, uint256 _assets, bool _isFullWithdrawal) private nonReentrant {
+    if (_token == address(0)) {
+      revert Grateful_InvalidAddress();
+    }
     AaveV3Vault vault = vaults[_token];
     if (address(vault) == address(0)) {
       revert Grateful_VaultNotSet();

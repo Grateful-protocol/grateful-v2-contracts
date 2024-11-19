@@ -149,6 +149,9 @@ interface IGrateful {
   /// @notice Thrown when the provided amount is invalid.
   error Grateful_InvalidAmount();
 
+  /// @notice Thrown when the provided address is invalid.
+  error Grateful_InvalidAddress();
+
   /*///////////////////////////////////////////////////////////////
                                    VARIABLES
     //////////////////////////////////////////////////////////////*/
