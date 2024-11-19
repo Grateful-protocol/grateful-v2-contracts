@@ -19,6 +19,7 @@ contract Deploy is Script {
     address[] tokens;
     IPool aavePool;
     uint256 initialFee;
+    uint256 initialPerformanceFee;
     VaultDeploymentParams[] vaults;
   }
 
@@ -61,7 +62,8 @@ contract Deploy is Script {
       params = DeploymentParams({
         tokens: _tokens,
         aavePool: IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2),
-        initialFee: 100,
+        initialFee: 0.01 ether, // 1%
+        initialPerformanceFee: 0.05 ether, // 5%
         vaults: _vaults
       });
     } else if (chainId == 10) {
@@ -75,7 +77,8 @@ contract Deploy is Script {
       params = DeploymentParams({
         tokens: _tokens,
         aavePool: IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD),
-        initialFee: 100,
+        initialFee: 0.01 ether, // 1%
+        initialPerformanceFee: 0.05 ether, // 5%
         vaults: _vaults
       });
     } else if (chainId == 11_155_420) {
@@ -93,7 +96,8 @@ contract Deploy is Script {
       params = DeploymentParams({
         tokens: _tokens,
         aavePool: IPool(0xb50201558B00496A145fE76f7424749556E326D8),
-        initialFee: 100,
+        initialFee: 0.01 ether, // 1%
+        initialPerformanceFee: 0.05 ether, // 5%
         vaults: _vaults
       });
     } else if (chainId == 421_614) {
@@ -111,7 +115,8 @@ contract Deploy is Script {
       params = DeploymentParams({
         tokens: _tokens,
         aavePool: IPool(0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff),
-        initialFee: 100,
+        initialFee: 0.01 ether, // 1%
+        initialPerformanceFee: 0.05 ether, // 5%
         vaults: _vaults
       });
     } else {
@@ -126,7 +131,7 @@ contract Deploy is Script {
       vm.startBroadcast();
     }
     // Deploy Grateful contract
-    grateful = new Grateful(_params.tokens, _params.aavePool, _params.initialFee);
+    grateful = new Grateful(_params.tokens, _params.aavePool, _params.initialFee, _params.initialPerformanceFee);
 
     // Deploy vaults and add them to Grateful
     uint256 vaultsLength = _params.vaults.length;

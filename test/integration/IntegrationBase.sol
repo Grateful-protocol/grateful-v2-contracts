@@ -26,7 +26,7 @@ contract IntegrationBase is Test, Deploy {
                                     CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
-  uint256 internal constant _FEE = 100; // 1% fee
+  uint256 internal constant _FEE = 0.01 ether; // 1% fee
   uint256 internal constant _PAYMENT_SALT = 4; // Salt for computing payment addresses
   bool internal constant _YIELDING_FUNDS = true;
   bool internal constant _NOT_YIELDING_FUNDS = false;
@@ -55,7 +55,7 @@ contract IntegrationBase is Test, Deploy {
   IGrateful internal _grateful;
 
   /*//////////////////////////////////////////////////////////////
-                                    SETUP FUNCTION
+                                SETUP FUNCTION
     //////////////////////////////////////////////////////////////*/
 
   function setUp() public {

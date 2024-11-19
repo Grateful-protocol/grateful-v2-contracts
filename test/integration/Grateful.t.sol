@@ -63,7 +63,7 @@ contract IntegrationGrateful is IntegrationBase {
       // Calculate profit before withdrawal
       uint256 profit = _grateful.calculateProfit(_merchant, tokenAddr);
 
-      uint256 assetsToWithdraw = grateful.calculateAssets(_merchant, tokenAddr);
+      uint256 assetsToWithdraw = _grateful.calculateAssets(_merchant, tokenAddr);
 
       // Merchant withdraws funds
       vm.prank(_merchant);
@@ -135,7 +135,7 @@ contract IntegrationGrateful is IntegrationBase {
       assertApproxEqAbs(
         IERC20(tokenAddr).balanceOf(_merchant),
         withdrawalAmount - performanceFee,
-        (withdrawalAmount - performanceFee) / 1000, // Precission loss tolerance of 0.1%
+        (withdrawalAmount - performanceFee) / 1000, // Precision loss tolerance of 0.1%
         string(abi.encodePacked(_tokenSymbols[tokenAddr], ": Merchant balance mismatch after partial withdrawal"))
       );
 
@@ -143,7 +143,7 @@ contract IntegrationGrateful is IntegrationBase {
       assertApproxEqAbs(
         _grateful.calculateAssets(_merchant, tokenAddr),
         expectedRemainingAssets,
-        expectedRemainingAssets / 1000, // Precission loss tolerance of 0.1%
+        expectedRemainingAssets / 1000, // Precision loss tolerance of 0.1%
         string(abi.encodePacked(_tokenSymbols[tokenAddr], ": Remaining assets mismatch after partial withdrawal"))
       );
 
@@ -155,7 +155,7 @@ contract IntegrationGrateful is IntegrationBase {
       assertApproxEqAbs(
         ownerFinalBalance - ownerInitialBalance,
         ownerExpectedBalanceIncrease,
-        ownerExpectedBalanceIncrease / 1000, // Precission loss tolerance of 0.1%
+        ownerExpectedBalanceIncrease / 1000, // Precision loss tolerance of 0.1%
         string(
           abi.encodePacked(
             _tokenSymbols[tokenAddr], ": Owner did not receive correct performance fee after partial withdrawal"
@@ -310,9 +310,9 @@ contract IntegrationGrateful is IntegrationBase {
     vm.assume(amountMultiplier < 1000);
 
     uint256[] memory customFees = new uint256[](3);
-    customFees[0] = 200; // 2%
+    customFees[0] = 0.02 ether; // 2%
     customFees[1] = 0; // 0%
-    customFees[2] = _FEE; // Default fee after unsetting custom fee
+    customFees[2] = _FEE; // Default fee after unsetting custom fee (1%)
 
     for (uint256 i = 0; i < _tokens.length; i++) {
       address tokenAddr = _tokens[i];
@@ -323,7 +323,7 @@ contract IntegrationGrateful is IntegrationBase {
       uint256 expectedMerchantBalance = 0;
 
       for (uint256 j = 0; j < customFees.length; j++) {
-        // Set custom fee
+        // Set or unset custom fee
         vm.prank(_owner);
         if (j < 2) {
           _grateful.setCustomFee(customFees[j], _merchant);
@@ -337,12 +337,13 @@ contract IntegrationGrateful is IntegrationBase {
         // Process payment
         _approveAndPay(_user, _merchant, tokenAddr, amount, _NOT_YIELDING_FUNDS);
 
-        // Calculate expected amounts
-        uint256 feeAmount = (amount * customFees[j]) / 10_000;
-        uint256 merchantAmount = amount - feeAmount;
+        // Calculate expected amounts using fixed-point arithmetic
+        uint256 feeAmount = _grateful.applyFee(_merchant, amount);
+        uint256 initialFee = amount - feeAmount;
 
-        expectedOwnerBalance += feeAmount;
-        expectedMerchantBalance += merchantAmount;
+        // Update expected balances
+        expectedOwnerBalance += initialFee;
+        expectedMerchantBalance += feeAmount;
 
         // Verify balances
         assertEq(

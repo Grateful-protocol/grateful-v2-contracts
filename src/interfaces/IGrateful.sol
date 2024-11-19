@@ -52,14 +52,6 @@ interface IGrateful {
   event OneTimePaymentCreated(address indexed merchant, address[] tokens, uint256 amount);
 
   /**
-   * @notice Emitted when funds are withdrawn.
-   * @param user Address of the user withdrawing funds.
-   * @param token Address of the token.
-   * @param amount Amount withdrawn.
-   */
-  event Withdraw(address indexed user, address indexed token, uint256 amount);
-
-  /**
    * @notice Emitted when the default fee is updated.
    * @param newFee The new fee in basis points.
    */
@@ -69,7 +61,7 @@ interface IGrateful {
    * @notice Emitted when the performance fee rate is updated.
    * @param newRate The new performance fee rate in basis points.
    */
-  event PerformanceFeeRateUpdated(uint256 newRate);
+  event PerformanceFeeUpdated(uint256 newRate);
 
   /**
    * @notice Emitted when a custom fee is set for a merchant.
@@ -206,7 +198,7 @@ interface IGrateful {
 
   /// @notice Returns the performance fee rate.
   /// @return Performance fee rate in basis points.
-  function performanceFeeRate() external view returns (uint256);
+  function performanceFee() external view returns (uint256);
 
   /// @notice Returns the custom fee applied to the payments for a merchant.
   /// @param _merchant Address of the merchant.
@@ -412,10 +404,10 @@ interface IGrateful {
 
   /**
    * @notice Sets the performance fee rate.
-   * @param _newPerformanceFeeRate The new performance fee rate in basis points.
+   * @param _newPerformanceFee The new performance fee rate in basis points.
    */
-  function setPerformanceFeeRate(
-    uint256 _newPerformanceFeeRate
+  function setPerformanceFee(
+    uint256 _newPerformanceFee
   ) external;
 
   /**

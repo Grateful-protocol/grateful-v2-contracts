@@ -31,10 +31,10 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IGrateful
-  uint256 public constant MAX_FEE = 10_000; // Max 100% fee (10000 basis points)
+  uint256 public constant MAX_FEE = 1 ether; // Max 100% fee (1 ether)
 
   /// @inheritdoc IGrateful
-  uint256 public constant MAX_PERFORMANCE_FEE = 5000; // Max 50% performance fee (5000 basis points)
+  uint256 public constant MAX_PERFORMANCE_FEE = 0.5 ether; // Max 50% performance fee (0.5 ether)
 
   /*//////////////////////////////////////////////////////////////
                                STATE VARIABLES
@@ -68,7 +68,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   mapping(uint256 => bool) public paymentIds;
 
   /// @inheritdoc IGrateful
-  uint256 public performanceFeeRate = 500; // 5% fee
+  uint256 public performanceFee;
 
   /*//////////////////////////////////////////////////////////////
                                  MODIFIERS
@@ -102,14 +102,20 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
    * @notice Initializes the Grateful contract.
    * @param _tokens Array of token addresses to whitelist.
    * @param _aavePool Address of the Aave V3 pool.
-   * @param _initialFee Initial fee in basis points (10000 = 100%).
+   * @param _initialFee Initial fee in fixed-point (1 ether = 100%).
    */
-  constructor(address[] memory _tokens, IPool _aavePool, uint256 _initialFee) Ownable(msg.sender) {
+  constructor(
+    address[] memory _tokens,
+    IPool _aavePool,
+    uint256 _initialFee,
+    uint256 _initialPerformanceFee
+  ) Ownable(msg.sender) {
     if (address(_aavePool) == address(0)) {
       revert Grateful_InvalidAddress();
     }
     aavePool = _aavePool;
     fee = _initialFee;
+    performanceFee = _initialPerformanceFee;
     uint256 tokensLength = _tokens.length;
     for (uint256 i = 0; i < tokensLength;) {
       tokensWhitelisted[_tokens[i]] = true;
@@ -148,7 +154,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     if (customFees[_merchant].isSet) {
       feePercentage = customFees[_merchant].fee;
     }
-    uint256 feeAmount = (_amount * feePercentage) / 10_000;
+    uint256 feeAmount = (_amount * feePercentage) / 1e18;
     return _amount - feeAmount;
   }
 
@@ -174,7 +180,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   function calculatePerformanceFee(
     uint256 _profit
   ) public view returns (uint256 feeAmount) {
-    feeAmount = (_profit * performanceFeeRate) / 10_000;
+    feeAmount = (_profit * performanceFee) / 1e18;
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -355,14 +361,14 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   }
 
   /// @inheritdoc IGrateful
-  function setPerformanceFeeRate(
-    uint256 _newPerformanceFeeRate
+  function setPerformanceFee(
+    uint256 _newPerformanceFee
   ) external onlyOwner {
-    if (_newPerformanceFeeRate > MAX_PERFORMANCE_FEE) {
+    if (_newPerformanceFee > MAX_PERFORMANCE_FEE) {
       revert Grateful_FeeRateTooHigh();
     }
-    performanceFeeRate = _newPerformanceFeeRate;
-    emit PerformanceFeeRateUpdated(_newPerformanceFeeRate);
+    performanceFee = _newPerformanceFee;
+    emit PerformanceFeeUpdated(_newPerformanceFee);
   }
 
   /// @inheritdoc IGrateful
@@ -512,7 +518,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     if (assetsToWithdraw > initialDepositToWithdraw) {
       profit = assetsToWithdraw - initialDepositToWithdraw;
       performanceFeeAmount = calculatePerformanceFee(profit);
-      assetsToWithdraw -= performanceFeeAmount; // Deduct fee from assets
+      assetsToWithdraw -= performanceFeeAmount;
     }
 
     // Update user's shares and deposits before external calls
