@@ -110,6 +110,15 @@ interface IGrateful {
    */
   event VaultRemoved(address indexed token, address indexed vault);
 
+  /**
+   * @notice Emitted when a withdrawal is made.
+   * @param user Address of the user making the withdrawal.
+   * @param token Address of the token being withdrawn.
+   * @param amount Amount of the token being withdrawn.
+   * @param performanceFee Amount of the performance fee deducted.
+   */
+  event Withdrawal(address indexed user, address indexed token, uint256 amount, uint256 performanceFee);
+
   /*///////////////////////////////////////////////////////////////
                                     ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -140,6 +149,11 @@ interface IGrateful {
   /*///////////////////////////////////////////////////////////////
                                    VARIABLES
     //////////////////////////////////////////////////////////////*/
+  /// @notice Returns the maximum fee in basis points (10000 = 100%).
+  function MAX_FEE() external pure returns (uint256);
+
+  /// @notice Returns the maximum performance fee in basis points (5000 = 50%).
+  function MAX_PERFORMANCE_FEE() external pure returns (uint256);
 
   /// @notice Returns the owner of the contract.
   function owner() external view returns (address);

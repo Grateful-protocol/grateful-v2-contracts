@@ -6,6 +6,7 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {OneTime} from "contracts/OneTime.sol";
 import {AaveV3Vault} from "contracts/vaults/AaveV3Vault.sol";
@@ -20,10 +21,19 @@ import {IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
  * @title Grateful Contract
  * @notice Allows payments in whitelisted tokens with optional yield via AAVE
  */
-contract Grateful is IGrateful, Ownable2Step {
+contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   using Bytes32AddressLib for bytes32;
   using FixedPointMathLib for uint256;
   using SafeERC20 for IERC20;
+
+  /*//////////////////////////////////////////////////////////////
+                                CONSTANTS
+  //////////////////////////////////////////////////////////////*/
+  /// @inheritdoc IGrateful
+  uint256 public constant MAX_FEE = 10_000; // Max 100% fee (10000 basis points)
+
+  /// @inheritdoc IGrateful
+  uint256 public constant MAX_PERFORMANCE_FEE = 5000; // Max 50% performance fee (5000 basis points)
 
   /*//////////////////////////////////////////////////////////////
                                  STATE VARIABLES
@@ -94,7 +104,7 @@ contract Grateful is IGrateful, Ownable2Step {
     fee = _initialFee;
     for (uint256 i = 0; i < _tokens.length; i++) {
       tokensWhitelisted[_tokens[i]] = true;
-      IERC20 token = IERC20(_tokens[i]); // Renamed from _token to token
+      IERC20 token = IERC20(_tokens[i]);
       token.forceApprove(address(_aavePool), type(uint256).max);
     }
   }
@@ -105,8 +115,8 @@ contract Grateful is IGrateful, Ownable2Step {
 
   /// @inheritdoc IGrateful
   function calculateAssets(address _merchant, address _token) public view returns (uint256 assets) {
-    AaveV3Vault vault = vaults[_token]; // Renamed from _vault to vault
-    uint256 sharesAmount = shares[_merchant][_token]; // Renamed from _shares to sharesAmount
+    AaveV3Vault vault = vaults[_token];
+    uint256 sharesAmount = shares[_merchant][_token];
     assets = vault.convertToAssets(sharesAmount);
   }
 
@@ -137,8 +147,8 @@ contract Grateful is IGrateful, Ownable2Step {
 
   /// @inheritdoc IGrateful
   function calculateProfit(address _user, address _token) public view returns (uint256 profit) {
-    AaveV3Vault vault = vaults[_token]; // Renamed from _vault to vault
-    uint256 sharesAmount = shares[_user][_token]; // Renamed from _shares to sharesAmount
+    AaveV3Vault vault = vaults[_token];
+    uint256 sharesAmount = shares[_user][_token];
     uint256 assets = vault.previewRedeem(sharesAmount); // Current value of user's shares
     uint256 initialDeposit = userDeposits[_user][_token]; // User's initial deposit
     if (assets > initialDeposit) {
@@ -164,7 +174,7 @@ contract Grateful is IGrateful, Ownable2Step {
     address _token
   ) external onlyOwner {
     tokensWhitelisted[_token] = true;
-    IERC20 token = IERC20(_token); // Renamed from _token to token
+    IERC20 token = IERC20(_token);
     token.forceApprove(address(aavePool), type(uint256).max);
     emit TokenAdded(_token);
   }
@@ -177,7 +187,7 @@ contract Grateful is IGrateful, Ownable2Step {
       revert Grateful_TokenOrVaultNotFound();
     }
     delete tokensWhitelisted[_token];
-    IERC20 token = IERC20(_token); // Renamed from _token to token
+    IERC20 token = IERC20(_token);
     token.forceApprove(address(aavePool), 0);
     token.forceApprove(address(vaults[_token]), 0);
     emit TokenRemoved(_token);
@@ -186,7 +196,7 @@ contract Grateful is IGrateful, Ownable2Step {
   /// @inheritdoc IGrateful
   function addVault(address _token, address _vault) external onlyOwner onlyWhenTokenWhitelisted(_token) {
     vaults[_token] = AaveV3Vault(_vault);
-    IERC20 token = IERC20(_token); // Renamed from _token to token
+    IERC20 token = IERC20(_token);
     token.safeIncreaseAllowance(address(_vault), type(uint256).max);
     emit VaultAdded(_token, _vault);
   }
@@ -199,7 +209,7 @@ contract Grateful is IGrateful, Ownable2Step {
     if (address(vault) == address(0)) {
       revert Grateful_TokenOrVaultNotFound();
     }
-    IERC20 token = IERC20(_token); // Renamed from _token to token
+    IERC20 token = IERC20(_token);
     token.forceApprove(address(vault), 0);
     emit VaultRemoved(_token, address(vault));
     delete vaults[_token];
@@ -304,6 +314,9 @@ contract Grateful is IGrateful, Ownable2Step {
   function setFee(
     uint256 _newFee
   ) external onlyOwner {
+    if (_newFee > MAX_FEE) {
+      revert Grateful_FeeRateTooHigh();
+    }
     fee = _newFee;
     emit FeeUpdated(_newFee);
   }
@@ -312,7 +325,7 @@ contract Grateful is IGrateful, Ownable2Step {
   function setPerformanceFeeRate(
     uint256 _newPerformanceFeeRate
   ) external onlyOwner {
-    if (_newPerformanceFeeRate > 5000) {
+    if (_newPerformanceFeeRate > MAX_PERFORMANCE_FEE) {
       revert Grateful_FeeRateTooHigh();
     }
     performanceFeeRate = _newPerformanceFeeRate;
@@ -321,6 +334,9 @@ contract Grateful is IGrateful, Ownable2Step {
 
   /// @inheritdoc IGrateful
   function setCustomFee(uint256 _newFee, address _merchant) external onlyOwner {
+    if (_newFee > MAX_FEE) {
+      revert Grateful_FeeRateTooHigh();
+    }
     customFees[_merchant] = CustomFee({isSet: true, fee: _newFee});
     emit CustomFeeUpdated(_merchant, _newFee);
   }
@@ -365,23 +381,23 @@ contract Grateful is IGrateful, Ownable2Step {
     uint256 _amount,
     uint256 _paymentId,
     bool _yieldFunds
-  ) private {
-    // Transfer the full amount from the sender to this contract
-    IERC20 token = IERC20(_token); // Renamed from _token to token
-    token.safeTransferFrom(_sender, address(this), _amount);
-
+  ) private nonReentrant {
     // Check payment id
     if (paymentIds[_paymentId]) {
       revert Grateful_PaymentIdAlreadyUsed();
     }
-
     paymentIds[_paymentId] = true;
 
     // Apply the fee
     uint256 amountWithFee = applyFee(_merchant, _amount);
+    uint256 feeAmount = _amount - amountWithFee;
+
+    IERC20 token = IERC20(_token);
+
+    // Transfer the full amount from the sender to this contract
+    token.safeTransferFrom(_sender, address(this), _amount);
 
     // Transfer fee to owner
-    uint256 feeAmount = _amount - amountWithFee;
     token.safeTransfer(owner(), feeAmount);
 
     if (_yieldFunds) {
@@ -390,6 +406,7 @@ contract Grateful is IGrateful, Ownable2Step {
         token.safeTransfer(_merchant, amountWithFee);
       } else {
         uint256 sharesAmount = vault.deposit(amountWithFee, address(this));
+        // Update state after receiving sharesAmount
         shares[_merchant][_token] += sharesAmount;
         userDeposits[_merchant][_token] += amountWithFee;
       }
@@ -402,12 +419,12 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   /**
-   * @dev Internal function to handle withdrawals.
+   * @notice Handles a withdrawal.
    * @param _token The address of the token to withdraw.
    * @param _assets The amount of assets to withdraw (ignored if full withdrawal).
    * @param _isFullWithdrawal Indicates if it's a full withdrawal.
    */
-  function _withdraw(address _token, uint256 _assets, bool _isFullWithdrawal) internal {
+  function _withdraw(address _token, uint256 _assets, bool _isFullWithdrawal) private nonReentrant {
     AaveV3Vault vault = vaults[_token];
     if (address(vault) == address(0)) {
       revert Grateful_VaultNotSet();
@@ -442,12 +459,9 @@ contract Grateful is IGrateful, Ownable2Step {
       profit = assetsToWithdraw - initialDepositToWithdraw;
       performanceFeeAmount = calculatePerformanceFee(profit);
       assetsToWithdraw -= performanceFeeAmount; // Deduct fee from assets
-
-      // Withdraw performance fee to fee recipient (owner)
-      vault.withdraw(performanceFeeAmount, owner(), address(this));
     }
 
-    // Update user's shares and deposits
+    // Update user's shares and deposits before external calls
     shares[msg.sender][_token] = totalShares - sharesToWithdraw;
     userDeposits[msg.sender][_token] = initialDeposit - initialDepositToWithdraw;
 
@@ -457,7 +471,15 @@ contract Grateful is IGrateful, Ownable2Step {
       userDeposits[msg.sender][_token] = 0;
     }
 
+    // Withdraw performance fee to fee recipient (owner)
+    if (performanceFeeAmount > 0) {
+      vault.withdraw(performanceFeeAmount, owner(), address(this));
+    }
+
     // Withdraw assets to user
     vault.withdraw(assetsToWithdraw, msg.sender, address(this));
+
+    // Emit an event for the withdrawal
+    emit Withdrawal(msg.sender, _token, assetsToWithdraw, performanceFeeAmount);
   }
 }
