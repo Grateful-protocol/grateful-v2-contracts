@@ -25,6 +25,8 @@ contract Deploy is Script {
 
   error UnsupportedChain();
 
+  address public constant GRATEFUL_MULTISIG = 0xbC4d66e4FA462d4deeb77495E7Aa51Bb8034710b;
+
   // Public variables to store deployed contracts
   Grateful public grateful;
   mapping(address => AaveV3Vault) public vaults;
@@ -132,6 +134,7 @@ contract Deploy is Script {
     }
     // Deploy Grateful contract
     grateful = new Grateful(_params.tokens, _params.aavePool, _params.initialFee, _params.initialPerformanceFee);
+    grateful.transferOwnership(GRATEFUL_MULTISIG);
 
     // Deploy vaults and add them to Grateful
     uint256 vaultsLength = _params.vaults.length;
@@ -153,12 +156,6 @@ contract Deploy is Script {
 
       vaults[vaultParams.token] = vault;
     }
-
-    // Deploy TestToken (if needed)
-    /* TestToken _testToken = new TestToken("Test Token", "TEST", 18); */
-
-    // Add TestToken to Grateful (if needed)
-    /* grateful.addToken(address(_testToken)); */
 
     if (!vm.envBool("TESTING")) {
       vm.stopBroadcast();
