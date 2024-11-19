@@ -146,6 +146,9 @@ interface IGrateful {
   /// @notice Thrown when the fee rate is too high.
   error Grateful_FeeRateTooHigh();
 
+  /// @notice Thrown when the provided amount is invalid.
+  error Grateful_InvalidAmount();
+
   /*///////////////////////////////////////////////////////////////
                                    VARIABLES
     //////////////////////////////////////////////////////////////*/

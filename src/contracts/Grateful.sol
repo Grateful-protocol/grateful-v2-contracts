@@ -28,7 +28,8 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
 
   /*//////////////////////////////////////////////////////////////
                                 CONSTANTS
-  //////////////////////////////////////////////////////////////*/
+    //////////////////////////////////////////////////////////////*/
+
   /// @inheritdoc IGrateful
   uint256 public constant MAX_FEE = 10_000; // Max 100% fee (10000 basis points)
 
@@ -36,7 +37,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   uint256 public constant MAX_PERFORMANCE_FEE = 5000; // Max 50% performance fee (5000 basis points)
 
   /*//////////////////////////////////////////////////////////////
-                                 STATE VARIABLES
+                               STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IGrateful
@@ -70,7 +71,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   uint256 public performanceFeeRate = 500; // 5% fee
 
   /*//////////////////////////////////////////////////////////////
-                                    MODIFIERS
+                                 MODIFIERS
     //////////////////////////////////////////////////////////////*/
 
   modifier onlyWhenTokenWhitelisted(
@@ -90,7 +91,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   }
 
   /*//////////////////////////////////////////////////////////////
-                                  CONSTRUCTOR
+                                 CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
   /**
@@ -110,7 +111,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   }
 
   /*//////////////////////////////////////////////////////////////
-                                PUBLIC FUNCTIONS
+                              PUBLIC FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IGrateful
@@ -166,7 +167,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   }
 
   /*//////////////////////////////////////////////////////////////
-                              EXTERNAL FUNCTIONS
+                             EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IGrateful
@@ -350,7 +351,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   }
 
   /*//////////////////////////////////////////////////////////////
-                                PRIVATE FUNCTIONS
+                             PRIVATE FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
   /**
@@ -371,8 +372,8 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
    * @param _merchant Address of the merchant.
    * @param _token Address of the token.
    * @param _amount Amount of the token.
-   * @param _paymentId ID of the payment
-   * @param _yieldFunds Whether to yield funds or not
+   * @param _paymentId ID of the payment.
+   * @param _yieldFunds Whether to yield funds or not.
    */
   function _processPayment(
     address _sender,
@@ -382,6 +383,11 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     uint256 _paymentId,
     bool _yieldFunds
   ) private nonReentrant {
+    // Validate amount
+    if (_amount == 0) {
+      revert Grateful_InvalidAmount();
+    }
+
     // Check payment id
     if (paymentIds[_paymentId]) {
       revert Grateful_PaymentIdAlreadyUsed();
@@ -438,6 +444,10 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
       sharesToWithdraw = totalShares;
       assetsToWithdraw = vault.previewRedeem(sharesToWithdraw);
     } else {
+      // Validate assets amount
+      if (_assets == 0) {
+        revert Grateful_InvalidAmount();
+      }
       sharesToWithdraw = vault.previewWithdraw(_assets);
       if (sharesToWithdraw > totalShares) {
         revert Grateful_WithdrawExceedsShares();
