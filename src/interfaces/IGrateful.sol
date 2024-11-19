@@ -138,7 +138,7 @@ interface IGrateful {
   error Grateful_PaymentIdAlreadyUsed();
 
   /// @notice Thrown when the user tries to withdraw more shares than they have.
-  error Grateful_WithdrawExceedsShares();
+  error Grateful_WithdrawExceedsShares(uint256 totalShares, uint256 sharesToWithdraw);
 
   /// @notice Thrown when attempting to remove a token or vault that does not exist.
   error Grateful_TokenOrVaultNotFound();

@@ -494,7 +494,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
       }
       sharesToWithdraw = vault.previewWithdraw(_assets);
       if (sharesToWithdraw > totalShares) {
-        revert Grateful_WithdrawExceedsShares();
+        revert Grateful_WithdrawExceedsShares(totalShares, sharesToWithdraw);
       }
       assetsToWithdraw = _assets;
     }
