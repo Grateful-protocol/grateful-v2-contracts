@@ -41,7 +41,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IGrateful
-  IPool public aavePool;
+  IPool public immutable aavePool;
 
   /// @inheritdoc IGrateful
   mapping(address => bool) public tokensWhitelisted;
@@ -84,8 +84,12 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   modifier onlyWhenTokensWhitelisted(
     address[] memory _tokens
   ) {
-    for (uint256 i = 0; i < _tokens.length; i++) {
+    uint256 tokensLength = _tokens.length;
+    for (uint256 i = 0; i < tokensLength;) {
       _ensureTokenWhitelisted(_tokens[i]);
+      unchecked {
+        i++;
+      }
     }
     _;
   }
@@ -103,10 +107,14 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   constructor(address[] memory _tokens, IPool _aavePool, uint256 _initialFee) Ownable(msg.sender) {
     aavePool = _aavePool;
     fee = _initialFee;
-    for (uint256 i = 0; i < _tokens.length; i++) {
+    uint256 tokensLength = _tokens.length;
+    for (uint256 i = 0; i < tokensLength;) {
       tokensWhitelisted[_tokens[i]] = true;
       IERC20 token = IERC20(_tokens[i]);
       token.forceApprove(address(_aavePool), type(uint256).max);
+      unchecked {
+        i++;
+      }
     }
   }
 
@@ -292,8 +300,11 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     address[] memory _tokens
   ) external onlyWhenTokensWhitelisted(_tokens) {
     uint256 tokensLength = _tokens.length;
-    for (uint256 i = 0; i < tokensLength; i++) {
+    for (uint256 i = 0; i < tokensLength;) {
       _withdraw(_tokens[i], 0, true);
+      unchecked {
+        i++;
+      }
     }
   }
 
@@ -306,8 +317,11 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     if (tokensLength != _assets.length) {
       revert Grateful_MismatchedArrays();
     }
-    for (uint256 i = 0; i < tokensLength; i++) {
+    for (uint256 i = 0; i < tokensLength;) {
       _withdraw(_tokens[i], _assets[i], false);
+      unchecked {
+        i++;
+      }
     }
   }
 
