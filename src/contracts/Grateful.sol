@@ -13,14 +13,16 @@ import {AaveV3Vault} from "contracts/vaults/AaveV3Vault.sol";
 import {IGrateful} from "interfaces/IGrateful.sol";
 
 import {Bytes32AddressLib} from "solmate/utils/Bytes32AddressLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
 /**
  * @title Grateful Contract
- * @notice Allows payments in whitelisted tokens with optional yield via AAVE, including payment splitting functionality.
+ * @notice Allows payments in whitelisted tokens with optional yield via AAVE
  */
 contract Grateful is IGrateful, Ownable2Step {
   using Bytes32AddressLib for bytes32;
+  using FixedPointMathLib for uint256;
   using SafeERC20 for IERC20;
 
   /*//////////////////////////////////////////////////////////////
@@ -40,6 +42,9 @@ contract Grateful is IGrateful, Ownable2Step {
   mapping(address => mapping(address => uint256)) public shares;
 
   /// @inheritdoc IGrateful
+  mapping(address => mapping(address => uint256)) public userDeposits;
+
+  /// @inheritdoc IGrateful
   mapping(address => bool) public oneTimePayments;
 
   /// @inheritdoc IGrateful
@@ -50,6 +55,9 @@ contract Grateful is IGrateful, Ownable2Step {
 
   /// @inheritdoc IGrateful
   mapping(uint256 => bool) public paymentIds;
+
+  /// @inheritdoc IGrateful
+  uint256 public performanceFeeRate = 500; // 5% fee
 
   /*//////////////////////////////////////////////////////////////
                                     MODIFIERS
@@ -72,7 +80,7 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   /*//////////////////////////////////////////////////////////////
-                                CONSTRUCTOR
+                                  CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
   /**
@@ -86,20 +94,20 @@ contract Grateful is IGrateful, Ownable2Step {
     fee = _initialFee;
     for (uint256 i = 0; i < _tokens.length; i++) {
       tokensWhitelisted[_tokens[i]] = true;
-      IERC20 _token = IERC20(_tokens[i]);
-      _token.forceApprove(address(_aavePool), type(uint256).max);
+      IERC20 token = IERC20(_tokens[i]); // Renamed from _token to token
+      token.forceApprove(address(_aavePool), type(uint256).max);
     }
   }
 
   /*//////////////////////////////////////////////////////////////
-                              PUBLIC FUNCTIONS
+                                PUBLIC FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IGrateful
   function calculateAssets(address _merchant, address _token) public view returns (uint256 assets) {
-    AaveV3Vault _vault = vaults[_token];
-    uint256 _shares = shares[_merchant][_token];
-    assets = _vault.convertToAssets(_shares);
+    AaveV3Vault vault = vaults[_token]; // Renamed from _vault to vault
+    uint256 sharesAmount = shares[_merchant][_token]; // Renamed from _shares to sharesAmount
+    assets = vault.convertToAssets(sharesAmount);
   }
 
   /// @inheritdoc IGrateful
@@ -127,8 +135,28 @@ contract Grateful is IGrateful, Ownable2Step {
     return super.owner();
   }
 
+  /// @inheritdoc IGrateful
+  function calculateProfit(address _user, address _token) public view returns (uint256 profit) {
+    AaveV3Vault vault = vaults[_token]; // Renamed from _vault to vault
+    uint256 sharesAmount = shares[_user][_token]; // Renamed from _shares to sharesAmount
+    uint256 assets = vault.previewRedeem(sharesAmount); // Current value of user's shares
+    uint256 initialDeposit = userDeposits[_user][_token]; // User's initial deposit
+    if (assets > initialDeposit) {
+      profit = assets - initialDeposit;
+    } else {
+      profit = 0;
+    }
+  }
+
+  /// @inheritdoc IGrateful
+  function calculatePerformanceFee(
+    uint256 _profit
+  ) public view returns (uint256 feeAmount) {
+    feeAmount = (_profit * performanceFeeRate) / 10_000;
+  }
+
   /*//////////////////////////////////////////////////////////////
-                            EXTERNAL FUNCTIONS
+                              EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IGrateful
@@ -136,7 +164,8 @@ contract Grateful is IGrateful, Ownable2Step {
     address _token
   ) external onlyOwner {
     tokensWhitelisted[_token] = true;
-    IERC20(_token).forceApprove(address(aavePool), type(uint256).max);
+    IERC20 token = IERC20(_token); // Renamed from _token to token
+    token.forceApprove(address(aavePool), type(uint256).max);
     emit TokenAdded(_token);
   }
 
@@ -148,15 +177,17 @@ contract Grateful is IGrateful, Ownable2Step {
       revert Grateful_TokenOrVaultNotFound();
     }
     delete tokensWhitelisted[_token];
-    IERC20(_token).forceApprove(address(aavePool), 0);
-    IERC20(_token).forceApprove(address(vaults[_token]), 0);
+    IERC20 token = IERC20(_token); // Renamed from _token to token
+    token.forceApprove(address(aavePool), 0);
+    token.forceApprove(address(vaults[_token]), 0);
     emit TokenRemoved(_token);
   }
 
   /// @inheritdoc IGrateful
   function addVault(address _token, address _vault) external onlyOwner onlyWhenTokenWhitelisted(_token) {
     vaults[_token] = AaveV3Vault(_vault);
-    IERC20(_token).safeIncreaseAllowance(address(_vault), type(uint256).max);
+    IERC20 token = IERC20(_token); // Renamed from _token to token
+    token.safeIncreaseAllowance(address(_vault), type(uint256).max);
     emit VaultAdded(_token, _vault);
   }
 
@@ -168,7 +199,8 @@ contract Grateful is IGrateful, Ownable2Step {
     if (address(vault) == address(0)) {
       revert Grateful_TokenOrVaultNotFound();
     }
-    IERC20(_token).forceApprove(address(vault), 0);
+    IERC20 token = IERC20(_token); // Renamed from _token to token
+    token.forceApprove(address(vault), 0);
     emit VaultRemoved(_token, address(vault));
     delete vaults[_token];
   }
@@ -192,9 +224,9 @@ contract Grateful is IGrateful, Ownable2Step {
     uint256 _salt,
     uint256 _paymentId,
     bool _yieldFunds,
-    address precomputed
+    address _precomputed
   ) external onlyWhenTokensWhitelisted(_tokens) returns (OneTime oneTime) {
-    oneTimePayments[precomputed] = true;
+    oneTimePayments[_precomputed] = true;
     oneTime =
       new OneTime{salt: bytes32(_salt)}(IGrateful(address(this)), _tokens, _merchant, _amount, _paymentId, _yieldFunds);
     emit OneTimePaymentCreated(_merchant, _tokens, _amount);
@@ -236,28 +268,12 @@ contract Grateful is IGrateful, Ownable2Step {
   function withdraw(
     address _token
   ) external onlyWhenTokenWhitelisted(_token) {
-    AaveV3Vault vault = vaults[_token];
-    if (address(vault) == address(0)) {
-      revert Grateful_usdcVaultNotSet();
-    }
-    uint256 _shares = shares[msg.sender][_token];
-    shares[msg.sender][_token] = 0;
-    vault.redeem(_shares, msg.sender, address(this));
+    _withdraw(_token, 0, true);
   }
 
   /// @inheritdoc IGrateful
   function withdraw(address _token, uint256 _assets) external onlyWhenTokenWhitelisted(_token) {
-    AaveV3Vault vault = vaults[_token];
-    if (address(vault) == address(0)) {
-      revert Grateful_usdcVaultNotSet();
-    }
-    uint256 _totalShares = shares[msg.sender][_token];
-    uint256 _sharesToWithdraw = vault.convertToShares(_assets);
-    if (_sharesToWithdraw > _totalShares) {
-      revert Grateful_WithdrawExceedsShares();
-    }
-    shares[msg.sender][_token] = _totalShares - _sharesToWithdraw;
-    vault.withdraw(_assets, msg.sender, address(this));
+    _withdraw(_token, _assets, false);
   }
 
   /// @inheritdoc IGrateful
@@ -266,16 +282,7 @@ contract Grateful is IGrateful, Ownable2Step {
   ) external onlyWhenTokensWhitelisted(_tokens) {
     uint256 tokensLength = _tokens.length;
     for (uint256 i = 0; i < tokensLength; i++) {
-      address _token = _tokens[i];
-      AaveV3Vault vault = vaults[_token];
-      if (address(vault) == address(0)) {
-        revert Grateful_usdcVaultNotSet();
-      }
-      uint256 _shares = shares[msg.sender][_token];
-      if (_shares > 0) {
-        shares[msg.sender][_token] = 0;
-        vault.redeem(_shares, msg.sender, address(this));
-      }
+      _withdraw(_tokens[i], 0, true);
     }
   }
 
@@ -289,19 +296,7 @@ contract Grateful is IGrateful, Ownable2Step {
       revert Grateful_MismatchedArrays();
     }
     for (uint256 i = 0; i < tokensLength; i++) {
-      address _token = _tokens[i];
-      uint256 _assetsToWithdraw = _assets[i];
-      AaveV3Vault vault = vaults[_token];
-      if (address(vault) == address(0)) {
-        revert Grateful_usdcVaultNotSet();
-      }
-      uint256 _totalShares = shares[msg.sender][_token];
-      uint256 _sharesToWithdraw = vault.convertToShares(_assetsToWithdraw);
-      if (_sharesToWithdraw > _totalShares) {
-        revert Grateful_WithdrawExceedsShares();
-      }
-      shares[msg.sender][_token] = _totalShares - _sharesToWithdraw;
-      vault.withdraw(_assetsToWithdraw, msg.sender, address(this));
+      _withdraw(_tokens[i], _assets[i], false);
     }
   }
 
@@ -311,6 +306,17 @@ contract Grateful is IGrateful, Ownable2Step {
   ) external onlyOwner {
     fee = _newFee;
     emit FeeUpdated(_newFee);
+  }
+
+  /// @inheritdoc IGrateful
+  function setPerformanceFeeRate(
+    uint256 _newPerformanceFeeRate
+  ) external onlyOwner {
+    if (_newPerformanceFeeRate > 5000) {
+      revert Grateful_FeeRateTooHigh();
+    }
+    performanceFeeRate = _newPerformanceFeeRate;
+    emit PerformanceFeeRateUpdated(_newPerformanceFeeRate);
   }
 
   /// @inheritdoc IGrateful
@@ -328,7 +334,7 @@ contract Grateful is IGrateful, Ownable2Step {
   }
 
   /*//////////////////////////////////////////////////////////////
-                             INTERNAL FUNCTIONS
+                                PRIVATE FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
   /**
@@ -359,9 +365,10 @@ contract Grateful is IGrateful, Ownable2Step {
     uint256 _amount,
     uint256 _paymentId,
     bool _yieldFunds
-  ) internal {
+  ) private {
     // Transfer the full amount from the sender to this contract
-    IERC20(_token).safeTransferFrom(_sender, address(this), _amount);
+    IERC20 token = IERC20(_token); // Renamed from _token to token
+    token.safeTransferFrom(_sender, address(this), _amount);
 
     // Check payment id
     if (paymentIds[_paymentId]) {
@@ -374,21 +381,83 @@ contract Grateful is IGrateful, Ownable2Step {
     uint256 amountWithFee = applyFee(_merchant, _amount);
 
     // Transfer fee to owner
-    IERC20(_token).safeTransfer(owner(), _amount - amountWithFee);
+    uint256 feeAmount = _amount - amountWithFee;
+    token.safeTransfer(owner(), feeAmount);
 
     if (_yieldFunds) {
       AaveV3Vault vault = vaults[_token];
       if (address(vault) == address(0)) {
-        IERC20(_token).safeTransfer(_merchant, amountWithFee);
+        token.safeTransfer(_merchant, amountWithFee);
       } else {
-        uint256 _shares = vault.deposit(amountWithFee, address(this));
-        shares[_merchant][_token] += _shares;
+        uint256 sharesAmount = vault.deposit(amountWithFee, address(this));
+        shares[_merchant][_token] += sharesAmount;
+        userDeposits[_merchant][_token] += amountWithFee;
       }
     } else {
       // Transfer tokens to merchant
-      IERC20(_token).safeTransfer(_merchant, amountWithFee);
+      token.safeTransfer(_merchant, amountWithFee);
     }
 
     emit PaymentProcessed(_sender, _merchant, _token, _amount, _yieldFunds, _paymentId);
+  }
+
+  /**
+   * @dev Internal function to handle withdrawals.
+   * @param _token The address of the token to withdraw.
+   * @param _assets The amount of assets to withdraw (ignored if full withdrawal).
+   * @param _isFullWithdrawal Indicates if it's a full withdrawal.
+   */
+  function _withdraw(address _token, uint256 _assets, bool _isFullWithdrawal) internal {
+    AaveV3Vault vault = vaults[_token];
+    if (address(vault) == address(0)) {
+      revert Grateful_VaultNotSet();
+    }
+
+    uint256 totalShares = shares[msg.sender][_token];
+    uint256 sharesToWithdraw;
+    uint256 assetsToWithdraw;
+
+    if (_isFullWithdrawal) {
+      sharesToWithdraw = totalShares;
+      assetsToWithdraw = vault.previewRedeem(sharesToWithdraw);
+    } else {
+      sharesToWithdraw = vault.previewWithdraw(_assets);
+      if (sharesToWithdraw > totalShares) {
+        revert Grateful_WithdrawExceedsShares();
+      }
+      assetsToWithdraw = _assets;
+    }
+
+    uint256 totalAssets = vault.previewRedeem(totalShares);
+    uint256 initialDeposit = userDeposits[msg.sender][_token];
+
+    // Calculate proportion of withdrawal
+    uint256 proportion = assetsToWithdraw.divWadDown(totalAssets);
+    uint256 initialDepositToWithdraw = initialDeposit.mulWadDown(proportion);
+
+    // Calculate profit and performance fee
+    uint256 profit = 0;
+    uint256 performanceFeeAmount = 0;
+    if (assetsToWithdraw > initialDepositToWithdraw) {
+      profit = assetsToWithdraw - initialDepositToWithdraw;
+      performanceFeeAmount = calculatePerformanceFee(profit);
+      assetsToWithdraw -= performanceFeeAmount; // Deduct fee from assets
+
+      // Withdraw performance fee to fee recipient (owner)
+      vault.withdraw(performanceFeeAmount, owner(), address(this));
+    }
+
+    // Update user's shares and deposits
+    shares[msg.sender][_token] = totalShares - sharesToWithdraw;
+    userDeposits[msg.sender][_token] = initialDeposit - initialDepositToWithdraw;
+
+    // Ensure balances are zero in case of full withdrawal to handle rounding errors
+    if (_isFullWithdrawal) {
+      shares[msg.sender][_token] = 0;
+      userDeposits[msg.sender][_token] = 0;
+    }
+
+    // Withdraw assets to user
+    vault.withdraw(assetsToWithdraw, msg.sender, address(this));
   }
 }

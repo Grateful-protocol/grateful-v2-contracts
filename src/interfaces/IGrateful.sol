@@ -13,7 +13,7 @@ import {IPool} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
  */
 interface IGrateful {
   /*///////////////////////////////////////////////////////////////
-                                  STRUCTS
+                                    STRUCTS
     //////////////////////////////////////////////////////////////*/
 
   struct CustomFee {
@@ -22,7 +22,7 @@ interface IGrateful {
   }
 
   /*///////////////////////////////////////////////////////////////
-                                  EVENTS
+                                    EVENTS
     //////////////////////////////////////////////////////////////*/
 
   /**
@@ -66,6 +66,12 @@ interface IGrateful {
   event FeeUpdated(uint256 newFee);
 
   /**
+   * @notice Emitted when the performance fee rate is updated.
+   * @param newRate The new performance fee rate in basis points.
+   */
+  event PerformanceFeeRateUpdated(uint256 newRate);
+
+  /**
    * @notice Emitted when a custom fee is set for a merchant.
    * @param merchant Address of the merchant.
    * @param newFee The new custom fee in basis points.
@@ -105,7 +111,7 @@ interface IGrateful {
   event VaultRemoved(address indexed token, address indexed vault);
 
   /*///////////////////////////////////////////////////////////////
-                                  ERRORS
+                                    ERRORS
     //////////////////////////////////////////////////////////////*/
   /// @notice Thrown when the token is not whitelisted.
   error Grateful_TokenNotWhitelisted();
@@ -113,14 +119,8 @@ interface IGrateful {
   /// @notice Thrown when array lengths mismatch.
   error Grateful_MismatchedArrays();
 
-  /// @notice Thrown when the total percentage is invalid.
-  error Grateful_InvalidTotalPercentage();
-
   /// @notice Thrown when the vault for a token is not set.
-  error Grateful_usdcVaultNotSet();
-
-  /// @notice Thrown when a token transfer fails.
-  error Grateful_TransferFailed();
+  error Grateful_VaultNotSet();
 
   /// @notice Thrown when the one-time payment is not found.
   error Grateful_OneTimeNotFound();
@@ -134,8 +134,11 @@ interface IGrateful {
   /// @notice Thrown when attempting to remove a token or vault that does not exist.
   error Grateful_TokenOrVaultNotFound();
 
+  /// @notice Thrown when the fee rate is too high.
+  error Grateful_FeeRateTooHigh();
+
   /*///////////////////////////////////////////////////////////////
-                                 VARIABLES
+                                   VARIABLES
     //////////////////////////////////////////////////////////////*/
 
   /// @notice Returns the owner of the contract.
@@ -164,6 +167,12 @@ interface IGrateful {
   /// @return Amount of shares.
   function shares(address _merchant, address _token) external view returns (uint256);
 
+  /// @notice Returns the user deposit amount for a merchant and token.
+  /// @param _merchant Address of the merchant.
+  /// @param _token Address of the token.
+  /// @return Amount of initial deposit.
+  function userDeposits(address _merchant, address _token) external view returns (uint256);
+
   /// @notice Checks if an address is a registered one-time payment.
   /// @param _address Address to check.
   /// @return True if it's a registered one-time payment, false otherwise.
@@ -174,6 +183,10 @@ interface IGrateful {
   /// @notice Returns the fee applied to the payments.
   /// @return Fee in basis points (10000 = 100%).
   function fee() external view returns (uint256);
+
+  /// @notice Returns the performance fee rate.
+  /// @return Performance fee rate in basis points.
+  function performanceFeeRate() external view returns (uint256);
 
   /// @notice Returns the custom fee applied to the payments for a merchant.
   /// @param _merchant Address of the merchant.
@@ -191,7 +204,7 @@ interface IGrateful {
   ) external view returns (bool isUsed);
 
   /*///////////////////////////////////////////////////////////////
-                                  LOGIC
+                                    LOGIC
     //////////////////////////////////////////////////////////////*/
 
   /**
@@ -205,9 +218,9 @@ interface IGrateful {
   /**
    * @notice Adds a vault for a specific token.
    * @param _token Address of the token.
-   * @param _usdcVault Address of the vault contract.
+   * @param _vault Address of the vault contract.
    */
-  function addVault(address _token, address _usdcVault) external;
+  function addVault(address _token, address _vault) external;
 
   /**
    * @notice Removes a token from the whitelist.
@@ -231,18 +244,18 @@ interface IGrateful {
    * @param _token Address of the token used for payment.
    * @param _amount Amount of the token to be paid.
    * @param _id ID of the payment.
-   * @param _yieldFunds Whether to yield funds or not
+   * @param _yieldFunds Whether to yield funds or not.
    */
   function pay(address _merchant, address _token, uint256 _amount, uint256 _id, bool _yieldFunds) external;
 
   /**
-   * @notice Creates a one-time payment without payment splitting.
+   * @notice Creates a one-time payment.
    * @param _merchant Address of the merchant.
    * @param _tokens Array of token addresses.
    * @param _amount Amount of the token.
    * @param _salt Salt used for address computation.
    * @param _paymentId ID of the payment.
-   * @param _yieldFunds Whether to yield funds or not
+   * @param _yieldFunds Whether to yield funds or not.
    * @param precomputed Precomputed address of the OneTime contract.
    * @return oneTime Address of the created OneTime contract.
    */
@@ -257,12 +270,12 @@ interface IGrateful {
   ) external returns (OneTime oneTime);
 
   /**
-   * @notice Receives a one-time payment without payment splitting.
+   * @notice Receives a one-time payment.
    * @param _merchant Address of the merchant.
    * @param _token Token address.
    * @param _paymentId ID of the payment.
-   * @param _yieldFunds Whether to yield funds or not
    * @param _amount Amount of the token.
+   * @param _yieldFunds Whether to yield funds or not.
    */
   function receiveOneTimePayment(
     address _merchant,
@@ -273,13 +286,13 @@ interface IGrateful {
   ) external;
 
   /**
-   * @notice Computes the address of a one-time payment contract without payment splitting.
+   * @notice Computes the address of a one-time payment contract.
    * @param _merchant Address of the merchant.
    * @param _tokens Array of token addresses.
    * @param _amount Amount of the token.
    * @param _salt Salt used for address computation.
    * @param _paymentId ID of the payment.
-   * @param _yieldFunds Whether to yield funds or not
+   * @param _yieldFunds Whether to yield funds or not.
    * @return oneTime Address of the computed OneTime contract.
    */
   function computeOneTimeAddress(
@@ -353,11 +366,36 @@ interface IGrateful {
   function applyFee(address _merchant, uint256 _amount) external view returns (uint256 amountWithFee);
 
   /**
+   * @notice Calculates the profit (yield) earned by a user on a specific token.
+   * @param _user The address of the user.
+   * @param _token The address of the token.
+   * @return profit The profit amount.
+   */
+  function calculateProfit(address _user, address _token) external view returns (uint256 profit);
+
+  /**
+   * @notice Calculates the performance fee on a given profit amount.
+   * @param _profit The profit amount.
+   * @return feeAmount The performance fee amount.
+   */
+  function calculatePerformanceFee(
+    uint256 _profit
+  ) external view returns (uint256 feeAmount);
+
+  /**
    * @notice Sets a new fee.
    * @param _newFee New fee to be applied (in basis points, 10000 = 100%).
    */
   function setFee(
     uint256 _newFee
+  ) external;
+
+  /**
+   * @notice Sets the performance fee rate.
+   * @param _newPerformanceFeeRate The new performance fee rate in basis points.
+   */
+  function setPerformanceFeeRate(
+    uint256 _newPerformanceFeeRate
   ) external;
 
   /**

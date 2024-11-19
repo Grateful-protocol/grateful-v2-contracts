@@ -11,12 +11,22 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IPool, IRewardsController} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
 contract IntegrationBase is Test {
-  // Constants
+  /*//////////////////////////////////////////////////////////////
+                                 CONSTANTS
+    //////////////////////////////////////////////////////////////*/
+
   uint256 internal constant _FORK_BLOCK = 18_920_905;
   uint256 internal constant _AMOUNT_USDC = 10 * 10 ** 6; // 10 USDC
   uint256 internal constant _AMOUNT_DAI = 10 * 10 ** 18; // 10 DAI
   uint256 internal constant _SUBSCRIPTION_PLAN_ID = 0;
-  uint256 internal constant _FEE = 100;
+  uint256 internal constant _FEE = 100; // 1% fee
+  uint256 internal constant _PAYMENT_SALT = 4; // Salt for computing payment addresses
+  bool internal constant _YIELDING_FUNDS = true;
+  bool internal constant _NOT_YIELDING_FUNDS = false;
+
+  /*//////////////////////////////////////////////////////////////
+                                 ADDRESSES
+    //////////////////////////////////////////////////////////////*/
 
   // EOAs
   address internal _user = makeAddr("user");
@@ -44,15 +54,21 @@ contract IntegrationBase is Test {
   AaveV3Vault internal _usdtVault;
   AaveV3Vault internal _daiVault;
 
+  /*//////////////////////////////////////////////////////////////
+                                 SETUP FUNCTION
+    //////////////////////////////////////////////////////////////*/
+
   function setUp() public {
     vm.startPrank(_owner);
     vm.createSelectFork(vm.rpcUrl("mainnet"), _FORK_BLOCK);
-    vm.label(address(_usdcVault), "Vault");
+
     _tokens = new address[](3);
     _tokens[0] = address(_usdc);
     _tokens[1] = address(_usdt);
     _tokens[2] = address(_dai);
+
     _grateful = new Grateful(_tokens, _aavePool, _FEE);
+
     _usdcVault = new AaveV3Vault(
       ERC20(address(_usdc)),
       ERC20(_aUsdc),
@@ -77,10 +93,61 @@ contract IntegrationBase is Test {
       IRewardsController(_rewardsController),
       address(_grateful)
     );
+
     vm.label(address(_grateful), "Grateful");
+    vm.label(address(_usdcVault), "USDC Vault");
+    vm.label(address(_daiVault), "DAI Vault");
+    vm.label(address(_usdtVault), "USDT Vault");
+
     _grateful.addVault(address(_usdc), address(_usdcVault));
     _grateful.addVault(address(_usdt), address(_usdtVault));
     _grateful.addVault(address(_dai), address(_daiVault));
     vm.stopPrank();
+  }
+
+  /*//////////////////////////////////////////////////////////////
+                               HELPER FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+  function _approveAndPay(address payer, address merchant, uint256 amount, bool yieldFunds) internal {
+    uint256 paymentId = _grateful.calculateId(payer, merchant, address(_usdc), amount);
+    vm.startPrank(payer);
+    _usdc.approve(address(_grateful), amount);
+    _grateful.pay(merchant, address(_usdc), amount, paymentId, yieldFunds);
+    vm.stopPrank();
+  }
+
+  function _calculateExpectedMerchantBalance(
+    uint256 initialDeposit,
+    uint256 profit,
+    uint256 performanceFeeRate
+  ) internal pure returns (uint256) {
+    uint256 performanceFee = (profit * performanceFeeRate) / 10_000;
+    uint256 totalAssets = initialDeposit + profit;
+    return totalAssets - performanceFee;
+  }
+
+  function _getOwnerBalanceIncrease(uint256 initialFee, uint256 performanceFee) internal pure returns (uint256) {
+    return initialFee + performanceFee;
+  }
+
+  function _captureBalances() internal view returns (uint256 ownerBalance, uint256 merchantBalance) {
+    ownerBalance = _usdc.balanceOf(_owner);
+    merchantBalance = _usdc.balanceOf(_merchant);
+  }
+
+  function _setupAndExecuteOneTimePayment(
+    address payer,
+    address merchant,
+    uint256 amount,
+    uint256 salt,
+    bool yieldFunds
+  ) internal returns (uint256 paymentId, address precomputed) {
+    paymentId = _grateful.calculateId(payer, merchant, address(_usdc), amount);
+    precomputed = address(_grateful.computeOneTimeAddress(merchant, _tokens, amount, salt, paymentId, yieldFunds));
+    vm.prank(payer);
+    _usdc.transfer(precomputed, amount);
+    vm.prank(_gratefulAutomation);
+    _grateful.createOneTimePayment(merchant, _tokens, amount, salt, paymentId, yieldFunds, precomputed);
   }
 }
