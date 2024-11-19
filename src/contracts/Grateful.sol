@@ -518,7 +518,6 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     if (assetsToWithdraw > initialDepositToWithdraw) {
       profit = assetsToWithdraw - initialDepositToWithdraw;
       performanceFeeAmount = calculatePerformanceFee(profit);
-      assetsToWithdraw -= performanceFeeAmount;
     }
 
     // Update user's shares and deposits before external calls
@@ -531,13 +530,22 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
       userDeposits[msg.sender][_token] = 0;
     }
 
-    // Withdraw performance fee to fee recipient (owner)
-    if (performanceFeeAmount > 0) {
-      vault.withdraw(performanceFeeAmount, owner(), address(this));
-    }
+    // Redeem shares to Grateful contract
+    vault.redeem(sharesToWithdraw, address(this), address(this));
 
-    // Withdraw assets to user
-    vault.withdraw(assetsToWithdraw, msg.sender, address(this));
+    IERC20 token = IERC20(_token);
+
+    if (profit > 0) {
+      // Transfer performance fee to owner
+      token.safeTransfer(owner(), performanceFeeAmount);
+
+      // Transfer remaining assets to merchant
+      uint256 merchantAmount = assetsToWithdraw - performanceFeeAmount;
+      token.safeTransfer(msg.sender, merchantAmount);
+    } else {
+      // No profit, transfer all assets to merchant
+      token.safeTransfer(msg.sender, assetsToWithdraw);
+    }
 
     // Emit an event for the withdrawal
     emit Withdrawal(msg.sender, _token, assetsToWithdraw, performanceFeeAmount);

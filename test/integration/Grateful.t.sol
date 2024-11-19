@@ -49,9 +49,6 @@ contract IntegrationGrateful is IntegrationBase {
 
       IERC20 token = IERC20(tokenAddr);
 
-      // Flow correctly works only if vault has any deposit
-      _approveAndPay(_user, _merchant2, tokenAddr, amount, _YIELDING_FUNDS);
-
       // Capture owner's initial balance before payment
       uint256 ownerInitialBalance = token.balanceOf(_owner);
 
@@ -201,9 +198,6 @@ contract IntegrationGrateful is IntegrationBase {
       uint256 amount = _tokenAmounts[tokenAddr] * amountMultiplier;
 
       IERC20 token = IERC20(tokenAddr);
-
-      // Flow correctly works only if vault has any deposit
-      _approveAndPay(_user, _merchant2, tokenAddr, 1, _YIELDING_FUNDS);
 
       // Capture owner's initial balance before payment
       uint256 ownerInitialBalance = token.balanceOf(_owner);
