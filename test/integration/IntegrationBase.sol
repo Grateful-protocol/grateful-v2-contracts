@@ -37,8 +37,8 @@ contract IntegrationBase is Test, Deploy {
 
   // EOAs
   address internal _user = makeAddr("user");
-  address internal _user2 = makeAddr("user2");
   address internal _merchant = makeAddr("merchant");
+  address internal _merchant2 = makeAddr("user2");
   address internal _owner = makeAddr("owner");
   address internal _gratefulAutomation = makeAddr("gratefulAutomation");
 
