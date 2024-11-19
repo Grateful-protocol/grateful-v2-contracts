@@ -1,145 +1,203 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {OneTime} from "contracts/OneTime.sol";
 import {IntegrationBase} from "test/integration/IntegrationBase.sol";
 
 contract IntegrationGreeter is IntegrationBase {
+  using SafeERC20 for IERC20;
+
   /*//////////////////////////////////////////////////////////////
-                                 TESTS
+                                TESTS
     //////////////////////////////////////////////////////////////*/
 
   // Tests for Standard Payments
   function test_Payment() public {
-    _approveAndPay(_user, _merchant, _AMOUNT_USDC, _NOT_YIELDING_FUNDS);
+    for (uint256 i = 0; i < _tokens.length; i++) {
+      address tokenAddr = _tokens[i];
+      string memory symbol = _tokenSymbols[tokenAddr];
+      uint256 amount = _tokenAmounts[tokenAddr];
 
-    assertEq(
-      _usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _AMOUNT_USDC), "Merchant balance mismatch after payment"
-    );
+      _approveAndPay(_user, _merchant, tokenAddr, amount, _NOT_YIELDING_FUNDS);
+
+      uint256 expectedMerchantBalance = _grateful.applyFee(_merchant, amount);
+      assertEq(
+        IERC20(tokenAddr).balanceOf(_merchant),
+        expectedMerchantBalance,
+        string(abi.encodePacked(symbol, ": Merchant balance mismatch after payment"))
+      );
+    }
   }
 
   function test_PaymentYieldingFunds() public {
-    // Capture owner's initial balance before payment
-    uint256 ownerInitialBalance = _usdc.balanceOf(_owner);
+    for (uint256 i = 0; i < _tokens.length; i++) {
+      address tokenAddr = _tokens[i];
+      string memory symbol = _tokenSymbols[tokenAddr];
+      uint256 amount = _tokenAmounts[tokenAddr];
 
-    _approveAndPay(_user, _merchant, _AMOUNT_USDC, _YIELDING_FUNDS);
+      IERC20 token = IERC20(tokenAddr);
 
-    // Advance time to accrue yield
-    vm.warp(block.timestamp + 1 days);
+      // Capture owner's initial balance before payment
+      uint256 ownerInitialBalance = token.balanceOf(_owner);
 
-    // Calculate profit before withdrawal
-    uint256 profit = _grateful.calculateProfit(_merchant, address(_usdc));
+      _approveAndPay(_user, _merchant, tokenAddr, amount, _YIELDING_FUNDS);
 
-    // Merchant withdraws funds
-    vm.prank(_merchant);
-    _grateful.withdraw(address(_usdc));
+      // Advance time to accrue yield
+      vm.warp(block.timestamp + 1 days);
 
-    // Calculate performance fee after withdrawal
-    uint256 performanceFee = _grateful.calculatePerformanceFee(profit);
+      // Calculate profit before withdrawal
+      uint256 profit = _grateful.calculateProfit(_merchant, tokenAddr);
 
-    uint256 initialDeposit = _grateful.applyFee(_merchant, _AMOUNT_USDC);
-    uint256 expectedMerchantBalance = initialDeposit + profit - performanceFee;
+      // Merchant withdraws funds
+      vm.prank(_merchant);
+      _grateful.withdraw(tokenAddr);
 
-    // Verify merchant's balance
-    assertEq(_usdc.balanceOf(_merchant), expectedMerchantBalance, "Merchant balance mismatch after withdrawal");
+      // Calculate performance fee after withdrawal
+      uint256 performanceFee = _grateful.calculatePerformanceFee(profit);
 
-    // Verify owner's balance
-    uint256 ownerFinalBalance = _usdc.balanceOf(_owner);
-    uint256 initialFee = _AMOUNT_USDC - initialDeposit;
-    uint256 ownerExpectedBalanceIncrease = initialFee + performanceFee;
+      uint256 initialDeposit = _grateful.applyFee(_merchant, amount);
+      uint256 expectedMerchantBalance = initialDeposit + profit - performanceFee;
 
-    assertEq(
-      ownerFinalBalance - ownerInitialBalance,
-      ownerExpectedBalanceIncrease,
-      "Owner did not receive correct performance fee"
-    );
+      // Verify merchant's balance
+      assertEq(
+        token.balanceOf(_merchant),
+        expectedMerchantBalance,
+        string(abi.encodePacked(symbol, ": Merchant balance mismatch after withdrawal"))
+      );
+
+      // Verify owner's balance
+      uint256 ownerFinalBalance = token.balanceOf(_owner);
+      uint256 initialFee = amount - initialDeposit;
+      uint256 ownerExpectedBalanceIncrease = initialFee + performanceFee;
+
+      assertEq(
+        ownerFinalBalance - ownerInitialBalance,
+        ownerExpectedBalanceIncrease,
+        string(abi.encodePacked(symbol, ": Owner did not receive correct performance fee"))
+      );
+    }
   }
 
   // Tests for One-Time Payments
   function test_OneTimePayment() public {
-    _setupAndExecuteOneTimePayment(_user, _merchant, _AMOUNT_USDC, _PAYMENT_SALT, _NOT_YIELDING_FUNDS);
+    for (uint256 i = 0; i < _tokens.length; i++) {
+      address tokenAddr = _tokens[i];
+      string memory symbol = _tokenSymbols[tokenAddr];
+      uint256 amount = _tokenAmounts[tokenAddr];
 
-    // Merchant receives the payment
-    assertEq(
-      _usdc.balanceOf(_merchant),
-      _grateful.applyFee(_merchant, _AMOUNT_USDC),
-      "Merchant balance mismatch after one-time payment"
-    );
+      _setupAndExecuteOneTimePayment(_user, _merchant, tokenAddr, amount, _PAYMENT_SALT, _NOT_YIELDING_FUNDS);
+
+      // Merchant receives the payment
+      uint256 expectedMerchantBalance = _grateful.applyFee(_merchant, amount);
+      assertEq(
+        IERC20(tokenAddr).balanceOf(_merchant),
+        expectedMerchantBalance,
+        string(abi.encodePacked(symbol, ": Merchant balance mismatch after one-time payment"))
+      );
+    }
   }
 
   function test_OneTimePaymentYieldingFunds() public {
-    // Capture owner's initial balance before payment
-    uint256 ownerInitialBalance = _usdc.balanceOf(_owner);
+    for (uint256 i = 0; i < _tokens.length; i++) {
+      address tokenAddr = _tokens[i];
+      string memory symbol = _tokenSymbols[tokenAddr];
+      uint256 amount = _tokenAmounts[tokenAddr];
 
-    // Setup one-time payment with yielding funds
-    _setupAndExecuteOneTimePayment(_user, _merchant, _AMOUNT_USDC, _PAYMENT_SALT, _YIELDING_FUNDS);
+      IERC20 token = IERC20(tokenAddr);
 
-    // Advance time to accrue yield
-    vm.warp(block.timestamp + 1 days);
+      // Capture owner's initial balance before payment
+      uint256 ownerInitialBalance = token.balanceOf(_owner);
 
-    // Calculate profit before withdrawal
-    uint256 profit = _grateful.calculateProfit(_merchant, address(_usdc));
+      // Setup one-time payment with yielding funds
+      _setupAndExecuteOneTimePayment(_user, _merchant, tokenAddr, amount, _PAYMENT_SALT, _YIELDING_FUNDS);
 
-    // Merchant withdraws funds
-    vm.prank(_merchant);
-    _grateful.withdraw(address(_usdc));
+      // Advance time to accrue yield
+      vm.warp(block.timestamp + 1 days);
 
-    // Calculate performance fee after withdrawal
-    uint256 performanceFee = _grateful.calculatePerformanceFee(profit);
+      // Calculate profit before withdrawal
+      uint256 profit = _grateful.calculateProfit(_merchant, tokenAddr);
 
-    uint256 initialDeposit = _grateful.applyFee(_merchant, _AMOUNT_USDC);
-    uint256 expectedMerchantBalance = initialDeposit + profit - performanceFee;
+      // Merchant withdraws funds
+      vm.prank(_merchant);
+      _grateful.withdraw(tokenAddr);
 
-    // Verify merchant's balance
-    assertEq(_usdc.balanceOf(_merchant), expectedMerchantBalance, "Merchant balance mismatch after withdrawal");
+      // Calculate performance fee after withdrawal
+      uint256 performanceFee = _grateful.calculatePerformanceFee(profit);
 
-    // Verify owner's balance
-    uint256 ownerFinalBalance = _usdc.balanceOf(_owner);
-    uint256 initialFee = _AMOUNT_USDC - initialDeposit;
-    uint256 ownerExpectedBalanceIncrease = initialFee + performanceFee;
+      uint256 initialDeposit = _grateful.applyFee(_merchant, amount);
+      uint256 expectedMerchantBalance = initialDeposit + profit - performanceFee;
 
-    assertEq(
-      ownerFinalBalance - ownerInitialBalance,
-      ownerExpectedBalanceIncrease,
-      "Owner did not receive correct performance fee"
-    );
+      // Verify merchant's balance
+      assertEq(
+        token.balanceOf(_merchant),
+        expectedMerchantBalance,
+        string(abi.encodePacked(symbol, ": Merchant balance mismatch after withdrawal"))
+      );
+
+      // Verify owner's balance
+      uint256 ownerFinalBalance = token.balanceOf(_owner);
+      uint256 initialFee = amount - initialDeposit;
+      uint256 ownerExpectedBalanceIncrease = initialFee + performanceFee;
+
+      assertEq(
+        ownerFinalBalance - ownerInitialBalance,
+        ownerExpectedBalanceIncrease,
+        string(abi.encodePacked(symbol, ": Owner did not receive correct performance fee"))
+      );
+    }
   }
 
   function test_OverpaidOneTimePayment() public {
-    uint256 paymentId = _grateful.calculateId(_user, _merchant, address(_usdc), _AMOUNT_USDC);
-    address precomputed = address(
-      _grateful.computeOneTimeAddress(_merchant, _tokens, _AMOUNT_USDC, _PAYMENT_SALT, paymentId, _NOT_YIELDING_FUNDS)
-    );
+    for (uint256 i = 0; i < _tokens.length; i++) {
+      address tokenAddr = _tokens[i];
+      string memory symbol = _tokenSymbols[tokenAddr];
+      uint256 amount = _tokenAmounts[tokenAddr];
 
-    // Payer sends double the amount
-    deal(address(_usdc), _user, _AMOUNT_USDC * 2);
-    vm.prank(_user);
-    _usdc.transfer(precomputed, _AMOUNT_USDC * 2);
+      uint256 paymentId = _grateful.calculateId(_user, _merchant, tokenAddr, amount);
+      address precomputed = address(
+        _grateful.computeOneTimeAddress(_merchant, _tokens, amount, _PAYMENT_SALT, paymentId, _NOT_YIELDING_FUNDS)
+      );
 
-    vm.prank(_gratefulAutomation);
-    OneTime _oneTime = _grateful.createOneTimePayment(
-      _merchant, _tokens, _AMOUNT_USDC, _PAYMENT_SALT, paymentId, _NOT_YIELDING_FUNDS, precomputed
-    );
+      // Payer sends double the amount
+      deal(tokenAddr, _user, amount * 2);
+      vm.prank(_user);
+      IERC20 token = IERC20(tokenAddr);
+      token.safeTransfer(precomputed, amount * 2);
 
-    // Merchant receives the correct amount
-    assertEq(
-      _usdc.balanceOf(_merchant),
-      _grateful.applyFee(_merchant, _AMOUNT_USDC),
-      "Merchant balance mismatch after overpaid one-time payment"
-    );
+      vm.prank(_gratefulAutomation);
+      OneTime _oneTime = _grateful.createOneTimePayment(
+        _merchant, _tokens, amount, _PAYMENT_SALT, paymentId, _NOT_YIELDING_FUNDS, precomputed
+      );
 
-    // Verify excess funds are in the OneTime contract
-    assertEq(
-      _usdc.balanceOf(address(_oneTime)), _AMOUNT_USDC, "Unexpected balance in OneTime contract after overpayment"
-    );
+      // Merchant receives the correct amount
+      uint256 expectedMerchantBalance = _grateful.applyFee(_merchant, amount);
+      assertEq(
+        token.balanceOf(_merchant),
+        expectedMerchantBalance,
+        string(abi.encodePacked(symbol, ": Merchant balance mismatch after overpaid one-time payment"))
+      );
 
-    // Rescue funds
-    uint256 prevPayerBalance = _usdc.balanceOf(_user);
-    vm.prank(_owner);
-    _oneTime.rescueFunds(_usdc, _user, _AMOUNT_USDC);
+      // Verify excess funds are in the OneTime contract
+      assertEq(
+        token.balanceOf(address(_oneTime)),
+        amount,
+        string(abi.encodePacked(symbol, ": Unexpected balance in OneTime contract after overpayment"))
+      );
 
-    // Verify payer's balance after rescuing funds
-    assertEq(_usdc.balanceOf(_user), prevPayerBalance + _AMOUNT_USDC, "Payer balance mismatch after rescuing funds");
+      // Rescue funds
+      uint256 prevPayerBalance = token.balanceOf(_user);
+      vm.prank(_owner);
+      _oneTime.rescueFunds(token, _user, amount);
+
+      // Verify payer's balance after rescuing funds
+      assertEq(
+        token.balanceOf(_user),
+        prevPayerBalance + amount,
+        string(abi.encodePacked(symbol, ": Payer balance mismatch after rescuing funds"))
+      );
+    }
   }
 
   function test_PaymentWithCustomFee() public {
@@ -148,42 +206,48 @@ contract IntegrationGreeter is IntegrationBase {
     customFees[1] = 0; // 0%
     customFees[2] = _FEE; // Default fee after unsetting custom fee
 
-    uint256 expectedOwnerBalance = 0;
-    uint256 expectedMerchantBalance = 0;
+    for (uint256 i = 0; i < _tokens.length; i++) {
+      address tokenAddr = _tokens[i];
+      string memory symbol = _tokenSymbols[tokenAddr];
+      uint256 amount = _tokenAmounts[tokenAddr];
 
-    for (uint256 i = 0; i < customFees.length; i++) {
-      // Set custom fee
-      vm.prank(_owner);
-      if (i < 2) {
-        _grateful.setCustomFee(customFees[i], _merchant);
-      } else {
-        _grateful.unsetCustomFee(_merchant);
+      uint256 expectedOwnerBalance = 0;
+      uint256 expectedMerchantBalance = 0;
+
+      for (uint256 j = 0; j < customFees.length; j++) {
+        // Set custom fee
+        vm.prank(_owner);
+        if (j < 2) {
+          _grateful.setCustomFee(customFees[j], _merchant);
+        } else {
+          _grateful.unsetCustomFee(_merchant);
+        }
+
+        // Advance time to prevent payment ID collision
+        vm.warp(block.timestamp + 1);
+
+        // Process payment
+        _approveAndPay(_user, _merchant, tokenAddr, amount, _NOT_YIELDING_FUNDS);
+
+        // Calculate expected amounts
+        uint256 feeAmount = (amount * customFees[j]) / 10_000;
+        uint256 merchantAmount = amount - feeAmount;
+
+        expectedOwnerBalance += feeAmount;
+        expectedMerchantBalance += merchantAmount;
+
+        // Verify balances
+        assertEq(
+          IERC20(tokenAddr).balanceOf(_merchant),
+          expectedMerchantBalance,
+          string(abi.encodePacked(symbol, ": Merchant balance mismatch at iteration ", j))
+        );
+        assertEq(
+          IERC20(tokenAddr).balanceOf(_owner),
+          expectedOwnerBalance,
+          string(abi.encodePacked(symbol, ": Owner balance mismatch at iteration ", j))
+        );
       }
-
-      // Advance time to prevent payment ID collision
-      vm.warp(block.timestamp + 1);
-
-      // Process payment
-      _approveAndPay(_user, _merchant, _AMOUNT_USDC, _NOT_YIELDING_FUNDS);
-
-      // Calculate expected amounts
-      uint256 feeAmount = (_AMOUNT_USDC * customFees[i]) / 10_000;
-      uint256 merchantAmount = _AMOUNT_USDC - feeAmount;
-
-      expectedOwnerBalance += feeAmount;
-      expectedMerchantBalance += merchantAmount;
-
-      // Verify balances
-      assertEq(
-        _usdc.balanceOf(_merchant),
-        expectedMerchantBalance,
-        string(abi.encodePacked("Merchant balance mismatch at iteration ", i))
-      );
-      assertEq(
-        _usdc.balanceOf(_owner),
-        expectedOwnerBalance,
-        string(abi.encodePacked("Owner balance mismatch at iteration ", i))
-      );
     }
   }
 }

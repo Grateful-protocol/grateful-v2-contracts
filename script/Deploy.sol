@@ -24,15 +24,39 @@ contract Deploy is Script {
 
   error UnsupportedChain();
 
+  // Public variables to store deployed contracts
+  Grateful public grateful;
+  mapping(address => AaveV3Vault) public vaults;
+
   function getDeploymentParams(
     uint256 chainId
   ) internal pure returns (DeploymentParams memory params) {
     if (chainId == 1) {
       // Mainnet
-      address[] memory _tokens = new address[](1);
-      _tokens[0] = address(0x5fd84259d66Cd46123540766Be93DFE6D43130D7);
+      address[] memory _tokens = new address[](3);
+      _tokens[0] = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48); // USDC
+      _tokens[1] = address(0xdAC17F958D2ee523a2206206994597C13D831ec7); // USDT
+      _tokens[2] = address(0x6B175474E89094C44Da98b954EedeAC495271d0F); // DAI
 
-      VaultDeploymentParams[] memory _vaults;
+      VaultDeploymentParams[] memory _vaults = new VaultDeploymentParams[](3);
+
+      _vaults[0] = VaultDeploymentParams({
+        token: address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48), // USDC
+        aToken: address(0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c), // aUSDC
+        rewardsController: address(0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb) // Rewards Controller
+      });
+
+      _vaults[1] = VaultDeploymentParams({
+        token: address(0xdAC17F958D2ee523a2206206994597C13D831ec7), // USDT
+        aToken: address(0x23878914EFE38d27C4D67Ab83ed1b93A74D4086a), // aUSDT
+        rewardsController: address(0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb) // Rewards Controller
+      });
+
+      _vaults[2] = VaultDeploymentParams({
+        token: address(0x6B175474E89094C44Da98b954EedeAC495271d0F), // DAI
+        aToken: address(0x018008bfb33d285247A21d44E50697654f754e63), // aDAI
+        rewardsController: address(0x8164Cc65827dcFe994AB23944CBC90e0aa80bFcb) // Rewards Controller
+      });
 
       params = DeploymentParams({
         tokens: _tokens,
@@ -98,10 +122,10 @@ contract Deploy is Script {
   function run() public {
     DeploymentParams memory _params = getDeploymentParams(block.chainid);
 
-    vm.startBroadcast();
+    /* vm.startBroadcast(); */
 
     // Deploy Grateful contract
-    Grateful _grateful = new Grateful(_params.tokens, _params.aavePool, _params.initialFee);
+    grateful = new Grateful(_params.tokens, _params.aavePool, _params.initialFee);
 
     // Deploy vaults and add them to Grateful
     uint256 vaultsLength = _params.vaults.length;
@@ -113,21 +137,23 @@ contract Deploy is Script {
         ERC20(vaultParams.token),
         ERC20(vaultParams.aToken),
         _params.aavePool,
-        _grateful.owner(), // rewardRecipient_ (set to desired address)
+        grateful.owner(), // rewardRecipient_ (set to desired address)
         IRewardsController(vaultParams.rewardsController),
-        address(_grateful) // newOwner
+        address(grateful) // newOwner
       );
 
       // Add the vault to Grateful
-      _grateful.addVault(vaultParams.token, address(vault));
+      grateful.addVault(vaultParams.token, address(vault));
+
+      vaults[vaultParams.token] = vault;
     }
 
     // Deploy TestToken (if needed)
-    TestToken _testToken = new TestToken("Test Token", "TEST", 18);
+    /* TestToken _testToken = new TestToken("Test Token", "TEST", 18); */
 
     // Add TestToken to Grateful (if needed)
-    _grateful.addToken(address(_testToken));
+    /* grateful.addToken(address(_testToken)); */
 
-    vm.stopBroadcast();
+    /* vm.stopBroadcast(); */
   }
 }
