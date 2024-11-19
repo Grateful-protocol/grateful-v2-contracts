@@ -9,6 +9,21 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IPool, IRewardsController} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
 contract Deploy is Script {
+  /*//////////////////////////////////////////////////////////////
+                               CONSTANTS
+    //////////////////////////////////////////////////////////////*/
+
+  uint256 public constant CHAIN_MAINNET = 1;
+  uint256 public constant CHAIN_OPTIMISM = 10;
+  uint256 public constant CHAIN_OPTIMISM_SEPOLIA = 11_155_420;
+  uint256 public constant CHAIN_ARBITRUM_SEPOLIA = 421_614;
+
+  address public constant GRATEFUL_MULTISIG = 0xbC4d66e4FA462d4deeb77495E7Aa51Bb8034710b;
+
+  /*//////////////////////////////////////////////////////////////
+                              STRUCTS
+    //////////////////////////////////////////////////////////////*/
+
   struct VaultDeploymentParams {
     address token;
     address aToken;
@@ -25,8 +40,6 @@ contract Deploy is Script {
 
   error UnsupportedChain();
 
-  address public constant GRATEFUL_MULTISIG = 0xbC4d66e4FA462d4deeb77495E7Aa51Bb8034710b;
-
   // Public variables to store deployed contracts
   Grateful public grateful;
   mapping(address => AaveV3Vault) public vaults;
@@ -34,7 +47,7 @@ contract Deploy is Script {
   function getDeploymentParams(
     uint256 chainId
   ) internal pure returns (DeploymentParams memory params) {
-    if (chainId == 1) {
+    if (chainId == CHAIN_MAINNET) {
       // Mainnet
       address[] memory _tokens = new address[](3);
       _tokens[0] = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48); // USDC
@@ -68,7 +81,7 @@ contract Deploy is Script {
         initialPerformanceFee: 0.05 ether, // 5%
         vaults: _vaults
       });
-    } else if (chainId == 10) {
+    } else if (chainId == CHAIN_OPTIMISM) {
       // Optimism
       address[] memory _tokens = new address[](2);
       _tokens[0] = address(0x94b008aA00579c1307B0EF2c499aD98a8ce58e58);
@@ -83,7 +96,7 @@ contract Deploy is Script {
         initialPerformanceFee: 0.05 ether, // 5%
         vaults: _vaults
       });
-    } else if (chainId == 11_155_420) {
+    } else if (chainId == CHAIN_OPTIMISM_SEPOLIA) {
       // Optimism Sepolia
       address[] memory _tokens = new address[](1);
       _tokens[0] = address(0x5fd84259d66Cd46123540766Be93DFE6D43130D7);
@@ -102,7 +115,7 @@ contract Deploy is Script {
         initialPerformanceFee: 0.05 ether, // 5%
         vaults: _vaults
       });
-    } else if (chainId == 421_614) {
+    } else if (chainId == CHAIN_ARBITRUM_SEPOLIA) {
       // Arbitrum Sepolia
       address[] memory _tokens = new address[](1);
       _tokens[0] = address(0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d); // usdc
