@@ -33,7 +33,6 @@ contract IntegrationBase is Test {
   address internal _merchant = makeAddr("merchant");
   address internal _owner = makeAddr("owner");
   address internal _gratefulAutomation = makeAddr("gratefulAutomation");
-  address internal _payer = 0x555d73f2002A457211d690313f942B065eAD1FFF;
 
   // Tokens
   IERC20 internal _usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
@@ -111,6 +110,7 @@ contract IntegrationBase is Test {
 
   function _approveAndPay(address payer, address merchant, uint256 amount, bool yieldFunds) internal {
     uint256 paymentId = _grateful.calculateId(payer, merchant, address(_usdc), amount);
+    deal(address(_usdc), payer, amount);
     vm.startPrank(payer);
     _usdc.approve(address(_grateful), amount);
     _grateful.pay(merchant, address(_usdc), amount, paymentId, yieldFunds);
@@ -143,6 +143,7 @@ contract IntegrationBase is Test {
     uint256 salt,
     bool yieldFunds
   ) internal returns (uint256 paymentId, address precomputed) {
+    deal(address(_usdc), payer, amount);
     paymentId = _grateful.calculateId(payer, merchant, address(_usdc), amount);
     precomputed = address(_grateful.computeOneTimeAddress(merchant, _tokens, amount, salt, paymentId, yieldFunds));
     vm.prank(payer);

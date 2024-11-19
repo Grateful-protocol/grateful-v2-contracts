@@ -11,7 +11,7 @@ contract IntegrationGreeter is IntegrationBase {
 
   // Tests for Standard Payments
   function test_Payment() public {
-    _approveAndPay(_payer, _merchant, _AMOUNT_USDC, _NOT_YIELDING_FUNDS);
+    _approveAndPay(_user, _merchant, _AMOUNT_USDC, _NOT_YIELDING_FUNDS);
 
     assertEq(
       _usdc.balanceOf(_merchant), _grateful.applyFee(_merchant, _AMOUNT_USDC), "Merchant balance mismatch after payment"
@@ -22,7 +22,7 @@ contract IntegrationGreeter is IntegrationBase {
     // Capture owner's initial balance before payment
     uint256 ownerInitialBalance = _usdc.balanceOf(_owner);
 
-    _approveAndPay(_payer, _merchant, _AMOUNT_USDC, _YIELDING_FUNDS);
+    _approveAndPay(_user, _merchant, _AMOUNT_USDC, _YIELDING_FUNDS);
 
     // Advance time to accrue yield
     vm.warp(block.timestamp + 1 days);
@@ -57,7 +57,7 @@ contract IntegrationGreeter is IntegrationBase {
 
   // Tests for One-Time Payments
   function test_OneTimePayment() public {
-    _setupAndExecuteOneTimePayment(_payer, _merchant, _AMOUNT_USDC, _PAYMENT_SALT, _NOT_YIELDING_FUNDS);
+    _setupAndExecuteOneTimePayment(_user, _merchant, _AMOUNT_USDC, _PAYMENT_SALT, _NOT_YIELDING_FUNDS);
 
     // Merchant receives the payment
     assertEq(
@@ -72,7 +72,7 @@ contract IntegrationGreeter is IntegrationBase {
     uint256 ownerInitialBalance = _usdc.balanceOf(_owner);
 
     // Setup one-time payment with yielding funds
-    _setupAndExecuteOneTimePayment(_payer, _merchant, _AMOUNT_USDC, _PAYMENT_SALT, _YIELDING_FUNDS);
+    _setupAndExecuteOneTimePayment(_user, _merchant, _AMOUNT_USDC, _PAYMENT_SALT, _YIELDING_FUNDS);
 
     // Advance time to accrue yield
     vm.warp(block.timestamp + 1 days);
@@ -106,13 +106,14 @@ contract IntegrationGreeter is IntegrationBase {
   }
 
   function test_OverpaidOneTimePayment() public {
-    uint256 paymentId = _grateful.calculateId(_payer, _merchant, address(_usdc), _AMOUNT_USDC);
+    uint256 paymentId = _grateful.calculateId(_user, _merchant, address(_usdc), _AMOUNT_USDC);
     address precomputed = address(
       _grateful.computeOneTimeAddress(_merchant, _tokens, _AMOUNT_USDC, _PAYMENT_SALT, paymentId, _NOT_YIELDING_FUNDS)
     );
 
     // Payer sends double the amount
-    vm.prank(_payer);
+    deal(address(_usdc), _user, _AMOUNT_USDC * 2);
+    vm.prank(_user);
     _usdc.transfer(precomputed, _AMOUNT_USDC * 2);
 
     vm.prank(_gratefulAutomation);
@@ -133,12 +134,12 @@ contract IntegrationGreeter is IntegrationBase {
     );
 
     // Rescue funds
-    uint256 prevPayerBalance = _usdc.balanceOf(_payer);
+    uint256 prevPayerBalance = _usdc.balanceOf(_user);
     vm.prank(_owner);
-    _oneTime.rescueFunds(_usdc, _payer, _AMOUNT_USDC);
+    _oneTime.rescueFunds(_usdc, _user, _AMOUNT_USDC);
 
     // Verify payer's balance after rescuing funds
-    assertEq(_usdc.balanceOf(_payer), prevPayerBalance + _AMOUNT_USDC, "Payer balance mismatch after rescuing funds");
+    assertEq(_usdc.balanceOf(_user), prevPayerBalance + _AMOUNT_USDC, "Payer balance mismatch after rescuing funds");
   }
 
   function test_PaymentWithCustomFee() public {
@@ -163,7 +164,7 @@ contract IntegrationGreeter is IntegrationBase {
       vm.warp(block.timestamp + 1);
 
       // Process payment
-      _approveAndPay(_payer, _merchant, _AMOUNT_USDC, _NOT_YIELDING_FUNDS);
+      _approveAndPay(_user, _merchant, _AMOUNT_USDC, _NOT_YIELDING_FUNDS);
 
       // Calculate expected amounts
       uint256 feeAmount = (_AMOUNT_USDC * customFees[i]) / 10_000;
