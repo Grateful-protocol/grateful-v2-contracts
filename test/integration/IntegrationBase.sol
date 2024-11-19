@@ -14,7 +14,7 @@ import {AaveV3Vault} from "contracts/vaults/AaveV3Vault.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IPool, IRewardsController} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
-interface IERC20Symbol {
+interface IERC20Metadata {
   function symbol() external view returns (string memory);
   function decimals() external view returns (uint8);
 }
@@ -85,7 +85,7 @@ contract IntegrationBase is Test, Deploy {
     // Get token symbols and label tokens and vaults
     for (uint256 i = 0; i < tokensLength; i++) {
       address tokenAddr = _tokens[i];
-      IERC20Symbol token = IERC20Symbol(tokenAddr);
+      IERC20Metadata token = IERC20Metadata(tokenAddr);
 
       string memory symbol = token.symbol();
       _tokenSymbols[tokenAddr] = symbol;
