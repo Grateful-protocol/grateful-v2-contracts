@@ -114,8 +114,6 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
       revert Grateful_InvalidAddress();
     }
     aavePool = _aavePool;
-    fee = _initialFee;
-    performanceFee = _initialPerformanceFee;
     uint256 tokensLength = _tokens.length;
     for (uint256 i = 0; i < tokensLength;) {
       tokensWhitelisted[_tokens[i]] = true;
@@ -125,6 +123,9 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
         i++;
       }
     }
+
+    _setFee(_initialFee);
+    _setPerformanceFee(_initialPerformanceFee);
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -353,22 +354,14 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   function setFee(
     uint256 _newFee
   ) external onlyOwner {
-    if (_newFee > MAX_FEE) {
-      revert Grateful_FeeRateTooHigh();
-    }
-    fee = _newFee;
-    emit FeeUpdated(_newFee);
+    _setFee(_newFee);
   }
 
   /// @inheritdoc IGrateful
   function setPerformanceFee(
     uint256 _newPerformanceFee
   ) external onlyOwner {
-    if (_newPerformanceFee > MAX_PERFORMANCE_FEE) {
-      revert Grateful_FeeRateTooHigh();
-    }
-    performanceFee = _newPerformanceFee;
-    emit PerformanceFeeUpdated(_newPerformanceFee);
+    _setPerformanceFee(_newPerformanceFee);
   }
 
   /// @inheritdoc IGrateful
@@ -408,6 +401,34 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     if (!tokensWhitelisted[_token]) {
       revert Grateful_TokenNotWhitelisted();
     }
+  }
+
+  /**
+   * @notice Sets the general fee. Must be called internally.
+   * @param _newFee The new fee to set in fixed-point (1 ether = 100%).
+   */
+  function _setFee(
+    uint256 _newFee
+  ) private {
+    if (_newFee > MAX_FEE) {
+      revert Grateful_FeeRateTooHigh();
+    }
+    fee = _newFee;
+    emit FeeUpdated(_newFee);
+  }
+
+  /**
+   * @notice Sets the performance fee. Must be called internally.
+   * @param _newPerformanceFee The new performance fee in fixed-point (1 ether = 100%).
+   */
+  function _setPerformanceFee(
+    uint256 _newPerformanceFee
+  ) private {
+    if (_newPerformanceFee > MAX_PERFORMANCE_FEE) {
+      revert Grateful_FeeRateTooHigh();
+    }
+    performanceFee = _newPerformanceFee;
+    emit PerformanceFeeUpdated(_newPerformanceFee);
   }
 
   /**
