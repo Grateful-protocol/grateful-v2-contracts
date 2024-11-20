@@ -86,7 +86,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
-        owner: GRATEFUL_MULTISIG,
+        owner: DEV_ADDRESS,
         aavePool: IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -120,7 +120,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
-        owner: GRATEFUL_MULTISIG,
+        owner: DEV_ADDRESS,
         aavePool: IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -154,7 +154,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
-        owner: GRATEFUL_MULTISIG,
+        owner: DEV_ADDRESS,
         aavePool: IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -188,7 +188,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
-        owner: GRATEFUL_MULTISIG,
+        owner: DEV_ADDRESS,
         aavePool: IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -216,27 +216,8 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
-        owner: GRATEFUL_MULTISIG,
+        owner: DEV_ADDRESS,
         aavePool: IPool(0x6807dc923806fE8Fd134338EABCA509979a7e0cB),
-        initialFee: 0.01 ether, // 1%
-        initialPerformanceFee: 0.05 ether, // 5%
-        vaults: _vaults
-      });
-    } else if (chainId == CHAIN_OPTIMISM_SEPOLIA) {
-      address[] memory _tokens = new address[](1);
-      _tokens[0] = address(0x5fd84259d66Cd46123540766Be93DFE6D43130D7);
-
-      VaultDeploymentParams[] memory _vaults = new VaultDeploymentParams[](1);
-      _vaults[0] = VaultDeploymentParams({
-        token: address(0x5fd84259d66Cd46123540766Be93DFE6D43130D7),
-        aToken: address(0xa818F1B57c201E092C4A2017A91815034326Efd1),
-        rewardsController: address(0xaD4F91D26254B6B0C6346b390dDA2991FDE2F20d)
-      });
-
-      params = DeploymentParams({
-        tokens: _tokens,
-        owner: GRATEFUL_MULTISIG,
-        aavePool: IPool(0xb50201558B00496A145fE76f7424749556E326D8),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
         vaults: _vaults
@@ -257,7 +238,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
-        owner: GRATEFUL_MULTISIG,
+        owner: DEV_ADDRESS,
         aavePool: IPool(0xA238Dd80C259a72e81d7e4664a9801593F98d1c5),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -326,7 +307,7 @@ contract Deploy is Script {
         ERC20(vaultParams.token),
         ERC20(vaultParams.aToken),
         _params.aavePool,
-        grateful.owner(),
+        GRATEFUL_MULTISIG,
         IRewardsController(vaultParams.rewardsController),
         address(grateful) // newOwner
       );
@@ -336,6 +317,8 @@ contract Deploy is Script {
 
       vaults[vaultParams.token] = vault;
     }
+
+    grateful.transferOwnership(GRATEFUL_MULTISIG);
 
     if (!vm.envBool("TESTING")) {
       vm.stopBroadcast();
