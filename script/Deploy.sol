@@ -122,6 +122,39 @@ contract Deploy is Script {
         initialPerformanceFee: 0.05 ether, // 5%
         vaults: _vaults
       });
+    } else if (chainId == CHAIN_POLYGON) {
+      address[] memory _tokens = new address[](3);
+      _tokens[0] = address(0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359); // USDC
+      _tokens[1] = address(0xc2132D05D31c914a87C6611C10748AEb04B58e8F); // USDT
+      _tokens[2] = address(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063); // DAI
+
+      VaultDeploymentParams[] memory _vaults = new VaultDeploymentParams[](3);
+
+      _vaults[0] = VaultDeploymentParams({
+        token: address(0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359), // USDC
+        aToken: address(0xA4D94019934D8333Ef880ABFFbF2FDd611C762BD), // aUSDC
+        rewardsController: address(0x929EC64c34a17401F460460D4B9390518E5B473e) // Rewards Controller
+      });
+
+      _vaults[1] = VaultDeploymentParams({
+        token: address(0xc2132D05D31c914a87C6611C10748AEb04B58e8F), // USDT
+        aToken: address(0x6ab707Aca953eDAeFBc4fD23bA73294241490620), // aUSDT
+        rewardsController: address(0x929EC64c34a17401F460460D4B9390518E5B473e) // Rewards Controller
+      });
+
+      _vaults[2] = VaultDeploymentParams({
+        token: address(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063), // DAI
+        aToken: address(0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE), // aDAI
+        rewardsController: address(0x929EC64c34a17401F460460D4B9390518E5B473e) // Rewards Controller
+      });
+
+      params = DeploymentParams({
+        tokens: _tokens,
+        aavePool: IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD),
+        initialFee: 0.01 ether, // 1%
+        initialPerformanceFee: 0.05 ether, // 5%
+        vaults: _vaults
+      });
     } else if (chainId == CHAIN_OPTIMISM_SEPOLIA) {
       address[] memory _tokens = new address[](1);
       _tokens[0] = address(0x5fd84259d66Cd46123540766Be93DFE6D43130D7);

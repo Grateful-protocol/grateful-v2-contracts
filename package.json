@@ -29,8 +29,9 @@
     "test:arbitrum-sepolia": "TESTING=true FORKED_NETWORK=arbitrum-sepolia FORK_BLOCK=98684306 forge test -vvv ",
     "test:fuzz": "echidna test/invariants/fuzz/Greeter.t.sol --contract InvariantGreeter --corpus-dir test/invariants/fuzz/echidna_coverage/ --test-mode assertion",
     "test:integration": "TESTING=true FORKED_NETWORK=mainnet FORK_BLOCK=18920905 forge test --match-contract Integration -vvv",
-    "test:optimism": "TESTING=true FORKED_NETWORK=optimism FORK_BLOCK=128238511 forge test -vvv ",
+    "test:optimism": "TESTING=true FORKED_NETWORK=optimism FORK_BLOCK=121238511 forge test -vvv ",
     "test:optimism-sepolia": "TESTING=true FORKED_NETWORK=optimism-sepolia FORK_BLOCK=20113040 forge test -vvv ",
+    "test:polygon": "TESTING=true FORKED_NETWORK=polygon FORK_BLOCK=53501016 forge test -vvv ",
     "test:symbolic": "halmos",
     "test:unit": "forge test --match-contract Unit -vvv",
     "test:unit:deep": "FOUNDRY_FUZZ_RUNS=5000 yarn test:unit"
@@ -41,6 +42,7 @@
     "test/**/*.sol": "yarn lint:sol-tests",
     "package.json": "sort-package-json"
   },
+  "dependencies": {},
   "devDependencies": {
     "@aave/core-v3": "^1.19.3",
     "@commitlint/cli": "19.3.0",
