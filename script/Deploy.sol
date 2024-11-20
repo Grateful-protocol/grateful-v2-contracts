@@ -28,6 +28,7 @@ contract Deploy is Script {
   uint256 public constant CHAIN_ARBITRUM_SEPOLIA = 421_614;
 
   address public constant GRATEFUL_MULTISIG = 0xbC4d66e4FA462d4deeb77495E7Aa51Bb8034710b;
+  address public constant DEV_ADDRESS = 0xe84DbC4EE14b0360B7bF87c7d30Cd0604E0e1E0F;
 
   /*//////////////////////////////////////////////////////////////
                               STRUCTS
@@ -41,6 +42,7 @@ contract Deploy is Script {
 
   struct DeploymentParams {
     address[] tokens;
+    address owner;
     IPool aavePool;
     uint256 initialFee;
     uint256 initialPerformanceFee;
@@ -84,6 +86,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
+        owner: GRATEFUL_MULTISIG,
         aavePool: IPool(0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -117,6 +120,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
+        owner: GRATEFUL_MULTISIG,
         aavePool: IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -150,6 +154,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
+        owner: GRATEFUL_MULTISIG,
         aavePool: IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -183,6 +188,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
+        owner: GRATEFUL_MULTISIG,
         aavePool: IPool(0x794a61358D6845594F94dc1DB02A252b5b4814aD),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -210,6 +216,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
+        owner: GRATEFUL_MULTISIG,
         aavePool: IPool(0x6807dc923806fE8Fd134338EABCA509979a7e0cB),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -228,6 +235,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
+        owner: GRATEFUL_MULTISIG,
         aavePool: IPool(0xb50201558B00496A145fE76f7424749556E326D8),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -249,6 +257,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
+        owner: GRATEFUL_MULTISIG,
         aavePool: IPool(0xA238Dd80C259a72e81d7e4664a9801593F98d1c5),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -267,6 +276,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
+        owner: DEV_ADDRESS,
         aavePool: IPool(0xb50201558B00496A145fE76f7424749556E326D8),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -285,6 +295,7 @@ contract Deploy is Script {
 
       params = DeploymentParams({
         tokens: _tokens,
+        owner: DEV_ADDRESS,
         aavePool: IPool(0xBfC91D59fdAA134A4ED45f7B584cAf96D7792Eff),
         initialFee: 0.01 ether, // 1%
         initialPerformanceFee: 0.05 ether, // 5%
@@ -302,8 +313,8 @@ contract Deploy is Script {
       vm.startBroadcast();
     }
 
-    grateful = new Grateful(_params.tokens, _params.aavePool, _params.initialFee, _params.initialPerformanceFee);
-    grateful.transferOwnership(GRATEFUL_MULTISIG);
+    grateful =
+      new Grateful(_params.tokens, _params.aavePool, _params.initialFee, _params.initialPerformanceFee, _params.owner);
 
     // Deploy vaults and add them to Grateful
     uint256 vaultsLength = _params.vaults.length;

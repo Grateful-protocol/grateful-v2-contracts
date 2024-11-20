@@ -103,13 +103,15 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
    * @param _tokens Array of token addresses to whitelist.
    * @param _aavePool Address of the Aave V3 pool.
    * @param _initialFee Initial fee in fixed-point (1 ether = 100%).
+   * @param _owner Address of the contract owner.
    */
   constructor(
     address[] memory _tokens,
     IPool _aavePool,
     uint256 _initialFee,
-    uint256 _initialPerformanceFee
-  ) Ownable(msg.sender) {
+    uint256 _initialPerformanceFee,
+    address _owner
+  ) Ownable(_owner) {
     if (address(_aavePool) == address(0)) {
       revert Grateful_InvalidAddress();
     }

@@ -39,7 +39,7 @@ contract IntegrationBase is Test, Deploy {
   address internal _user = makeAddr("user");
   address internal _merchant = makeAddr("merchant");
   address internal _merchant2 = makeAddr("user2");
-  address internal _owner = makeAddr("owner");
+  address internal _owner;
   address internal _gratefulAutomation = makeAddr("gratefulAutomation");
 
   // Tokens array
@@ -64,10 +64,12 @@ contract IntegrationBase is Test, Deploy {
 
     // Use fork block from deployment parameters
     vm.createSelectFork(vm.rpcUrl(forkedNetwork), forkBlock);
-    vm.startPrank(_owner);
 
     // Get deployment parameters
     DeploymentParams memory params = getDeploymentParams(block.chainid);
+
+    _owner = params.owner;
+    vm.startPrank(_owner);
 
     // Copy tokens to storage variable _tokens
     uint256 tokensLength = params.tokens.length;
