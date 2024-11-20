@@ -31,7 +31,13 @@ runs = 10
 mainnet = "${MAINNET_RPC}"
 sepolia = "${SEPOLIA_RPC}"
 optimism-sepolia = "${OPTIMISM_SEPOLIA_RPC}"
-arb-sepolia = "${ARBITRUM_SEPOLIA_RPC}"
+arbitrum-sepolia = "${ARBITRUM_SEPOLIA_RPC}"
+optimism = "${OPTIMISM_RPC}"
+polygon = "${POLYGON_RPC}"
+base = "${BASE_RPC}"
+arbitrum = "${ARBITRUM_RPC}"
+bnb = "${BNB_RPC}"
+
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_API_KEY}", chain = "mainnet" }

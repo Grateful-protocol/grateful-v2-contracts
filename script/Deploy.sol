@@ -5,6 +5,8 @@ import {Grateful} from "contracts/Grateful.sol";
 import {TestToken} from "contracts/external/TestToken.sol";
 import {AaveV3Vault} from "contracts/vaults/AaveV3Vault.sol";
 import {Script} from "forge-std/Script.sol";
+
+import {console} from "forge-std/console.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IPool, IRewardsController} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
@@ -13,8 +15,15 @@ contract Deploy is Script {
                                CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
-  uint256 public constant CHAIN_MAINNET = 1;
+  // Mainnets
+  uint256 public constant CHAIN_ETHEREUM = 1;
   uint256 public constant CHAIN_OPTIMISM = 10;
+  uint256 public constant CHAIN_POLYGON = 137;
+  uint256 public constant CHAIN_BASE = 8453;
+  uint256 public constant CHAIN_ARBITRUM = 42_161;
+  uint256 public constant CHAIN_BNB = 56;
+
+  // Testnets
   uint256 public constant CHAIN_OPTIMISM_SEPOLIA = 11_155_420;
   uint256 public constant CHAIN_ARBITRUM_SEPOLIA = 421_614;
 
@@ -47,8 +56,7 @@ contract Deploy is Script {
   function getDeploymentParams(
     uint256 chainId
   ) internal pure returns (DeploymentParams memory params) {
-    if (chainId == CHAIN_MAINNET) {
-      // Mainnet
+    if (chainId == CHAIN_ETHEREUM) {
       address[] memory _tokens = new address[](3);
       _tokens[0] = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48); // USDC
       _tokens[1] = address(0xdAC17F958D2ee523a2206206994597C13D831ec7); // USDT
@@ -82,12 +90,30 @@ contract Deploy is Script {
         vaults: _vaults
       });
     } else if (chainId == CHAIN_OPTIMISM) {
-      // Optimism
-      address[] memory _tokens = new address[](2);
-      _tokens[0] = address(0x94b008aA00579c1307B0EF2c499aD98a8ce58e58);
-      _tokens[1] = address(0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1);
+      address[] memory _tokens = new address[](3);
+      _tokens[0] = address(0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85); // USDC
+      _tokens[1] = address(0x94b008aA00579c1307B0EF2c499aD98a8ce58e58); // USDT
+      _tokens[2] = address(0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1); // DAI
 
-      VaultDeploymentParams[] memory _vaults;
+      VaultDeploymentParams[] memory _vaults = new VaultDeploymentParams[](3);
+
+      _vaults[0] = VaultDeploymentParams({
+        token: address(0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85), // USDC
+        aToken: address(0x38d693cE1dF5AaDF7bC62595A37D667aD57922e5), // aUSDC
+        rewardsController: address(0x929EC64c34a17401F460460D4B9390518E5B473e) // Rewards Controller
+      });
+
+      _vaults[1] = VaultDeploymentParams({
+        token: address(0x94b008aA00579c1307B0EF2c499aD98a8ce58e58), // USDT
+        aToken: address(0x6ab707Aca953eDAeFBc4fD23bA73294241490620), // aUSDT
+        rewardsController: address(0x929EC64c34a17401F460460D4B9390518E5B473e) // Rewards Controller
+      });
+
+      _vaults[2] = VaultDeploymentParams({
+        token: address(0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1), // DAI
+        aToken: address(0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE), // aDAI
+        rewardsController: address(0x929EC64c34a17401F460460D4B9390518E5B473e) // Rewards Controller
+      });
 
       params = DeploymentParams({
         tokens: _tokens,
@@ -97,15 +123,14 @@ contract Deploy is Script {
         vaults: _vaults
       });
     } else if (chainId == CHAIN_OPTIMISM_SEPOLIA) {
-      // Optimism Sepolia
       address[] memory _tokens = new address[](1);
       _tokens[0] = address(0x5fd84259d66Cd46123540766Be93DFE6D43130D7);
 
       VaultDeploymentParams[] memory _vaults = new VaultDeploymentParams[](1);
       _vaults[0] = VaultDeploymentParams({
-        token: address(0x5fd84259d66Cd46123540766Be93DFE6D43130D7), // Token address
-        aToken: address(0xa818F1B57c201E092C4A2017A91815034326Efd1), // aToken address
-        rewardsController: address(0xaD4F91D26254B6B0C6346b390dDA2991FDE2F20d) // Rewards Controller address
+        token: address(0x5fd84259d66Cd46123540766Be93DFE6D43130D7),
+        aToken: address(0xa818F1B57c201E092C4A2017A91815034326Efd1),
+        rewardsController: address(0xaD4F91D26254B6B0C6346b390dDA2991FDE2F20d)
       });
 
       params = DeploymentParams({
@@ -116,15 +141,14 @@ contract Deploy is Script {
         vaults: _vaults
       });
     } else if (chainId == CHAIN_ARBITRUM_SEPOLIA) {
-      // Arbitrum Sepolia
       address[] memory _tokens = new address[](1);
       _tokens[0] = address(0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d); // usdc
 
       VaultDeploymentParams[] memory _vaults = new VaultDeploymentParams[](1);
       _vaults[0] = VaultDeploymentParams({
-        token: address(0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d), // Token address
-        aToken: address(0x460b97BD498E1157530AEb3086301d5225b91216), // aToken address
-        rewardsController: address(0x3A203B14CF8749a1e3b7314c6c49004B77Ee667A) // Rewards Controller address
+        token: address(0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d),
+        aToken: address(0x460b97BD498E1157530AEb3086301d5225b91216),
+        rewardsController: address(0x3A203B14CF8749a1e3b7314c6c49004B77Ee667A)
       });
 
       params = DeploymentParams({
@@ -145,7 +169,7 @@ contract Deploy is Script {
     if (!vm.envBool("TESTING")) {
       vm.startBroadcast();
     }
-    // Deploy Grateful contract
+
     grateful = new Grateful(_params.tokens, _params.aavePool, _params.initialFee, _params.initialPerformanceFee);
     grateful.transferOwnership(GRATEFUL_MULTISIG);
 
@@ -159,7 +183,7 @@ contract Deploy is Script {
         ERC20(vaultParams.token),
         ERC20(vaultParams.aToken),
         _params.aavePool,
-        grateful.owner(), // rewardRecipient_ (set to desired address)
+        grateful.owner(),
         IRewardsController(vaultParams.rewardsController),
         address(grateful) // newOwner
       );
