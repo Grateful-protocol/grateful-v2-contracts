@@ -32,6 +32,7 @@
     "test": "TESTING=true FORKED_NETWORK=mainnet FORK_BLOCK=18920905 forge test -vvv ",
     "test:arbitrum": "TESTING=true FORKED_NETWORK=arbitrum FORK_BLOCK=236334831 forge test -vvv ",
     "test:arbitrum-sepolia": "TESTING=true FORKED_NETWORK=arbitrum-sepolia FORK_BLOCK=98684306 forge test -vvv ",
+    "test:base": "TESTING=true FORKED_NETWORK=base FORK_BLOCK=20648648 forge test -vvv ",
     "test:bnb": "TESTING=true FORKED_NETWORK=bnb FORK_BLOCK=44138162 forge test -vvv ",
     "test:fuzz": "echidna test/invariants/fuzz/Greeter.t.sol --contract InvariantGreeter --corpus-dir test/invariants/fuzz/echidna_coverage/ --test-mode assertion",
     "test:integration": "TESTING=true FORKED_NETWORK=mainnet FORK_BLOCK=18920905 forge test --match-contract Integration -vvv",

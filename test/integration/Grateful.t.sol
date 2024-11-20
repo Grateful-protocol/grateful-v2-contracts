@@ -44,6 +44,11 @@ contract IntegrationGrateful is IntegrationBase {
 
     for (uint256 i = 0; i < _tokens.length; i++) {
       address tokenAddr = _tokens[i];
+
+      if (address(grateful.vaults(tokenAddr)) == address(0)) {
+        continue;
+      }
+
       string memory symbol = _tokenSymbols[tokenAddr];
       uint256 amount = _tokenAmounts[tokenAddr] * amountMultiplier;
 
@@ -100,6 +105,11 @@ contract IntegrationGrateful is IntegrationBase {
 
     for (uint256 i = 0; i < _tokens.length; i++) {
       address tokenAddr = _tokens[i];
+
+      if (address(grateful.vaults(tokenAddr)) == address(0)) {
+        continue;
+      }
+
       uint256 amount = _tokenAmounts[tokenAddr] * amountMultiplier;
 
       // Capture owner's initial balance before payment
@@ -194,6 +204,11 @@ contract IntegrationGrateful is IntegrationBase {
 
     for (uint256 i = 0; i < _tokens.length; i++) {
       address tokenAddr = _tokens[i];
+
+      if (address(grateful.vaults(tokenAddr)) == address(0)) {
+        continue;
+      }
+
       string memory symbol = _tokenSymbols[tokenAddr];
       uint256 amount = _tokenAmounts[tokenAddr] * amountMultiplier;
 
