@@ -13,6 +13,7 @@
     "build": "forge build",
     "build:optimized": "FOUNDRY_PROFILE=optimized forge build",
     "coverage": "forge coverage --report summary --report lcov --match-path 'test/unit/*'",
+    "coverage:integration": "TESTING=true FORKED_NETWORK=mainnet FORK_BLOCK=18920905 forge coverage --report summary --report lcov --match-path 'test/integration/*'",
     "deploy:arbitrum": "bash -c 'source .env && TESTING=false forge script Deploy -vvvvv --rpc-url $ARBITRUM_RPC --broadcast --chain arbitrum --account dev --verify --etherscan-api-key $ARBITRUM_ETHERSCAN_API_KEY'",
     "deploy:arbitrum-sepolia": "bash -c 'source .env && TESTING=false forge script Deploy -vvvvv --rpc-url $ARBITRUM_SEPOLIA_RPC --broadcast --chain arbitrum-sepolia --account dev --verify --verifier blockscout --verifier-url https://arbitrum-sepolia.blockscout.com/api/'",
     "deploy:base": "bash -c 'source .env && TESTING=false forge script Deploy -vvvvv --rpc-url $BASE_RPC --broadcast --chain base --account dev --verify --etherscan-api-key $BASE_ETHERSCAN_API_KEY'",

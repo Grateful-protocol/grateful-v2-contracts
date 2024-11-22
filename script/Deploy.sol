@@ -2,7 +2,6 @@
 pragma solidity 0.8.26;
 
 import {Grateful} from "contracts/Grateful.sol";
-import {TestToken} from "contracts/external/TestToken.sol";
 import {AaveV3Vault} from "contracts/vaults/AaveV3Vault.sol";
 import {Script} from "forge-std/Script.sol";
 
