@@ -269,6 +269,11 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     oneTimePayments[_precomputed] = true;
     oneTime =
       new OneTime{salt: bytes32(_salt)}(IGrateful(address(this)), _tokens, _merchant, _amount, _paymentId, _yieldFunds);
+
+    if (address(oneTime) != _precomputed) {
+      revert Grateful_PrecomputedAddressMismatch();
+    }
+
     emit OneTimePaymentCreated(_merchant, _tokens, _amount);
   }
 
