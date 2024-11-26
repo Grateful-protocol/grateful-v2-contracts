@@ -144,6 +144,9 @@ interface IGrateful {
   /// @notice Thrown when the provided address is invalid.
   error Grateful_InvalidAddress();
 
+  /// @notice Thrown when the precomputed address does not match the one-time address created.
+  error Grateful_PrecomputedAddressMismatch();
+
   /*///////////////////////////////////////////////////////////////
                                    VARIABLES
     //////////////////////////////////////////////////////////////*/
@@ -207,13 +210,6 @@ interface IGrateful {
   function customFees(
     address _merchant
   ) external view returns (bool isSet, uint256 fee);
-
-  /// @notice Returns if a paymentId has been used.
-  /// @param paymentId The payment id.
-  /// @return isUsed True if the payment id has been used.
-  function paymentIds(
-    uint256 paymentId
-  ) external view returns (bool isUsed);
 
   /*///////////////////////////////////////////////////////////////
                                     LOGIC

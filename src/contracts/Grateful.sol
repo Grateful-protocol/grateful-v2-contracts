@@ -65,9 +65,6 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   mapping(address => CustomFee) public override customFees;
 
   /// @inheritdoc IGrateful
-  mapping(uint256 => bool) public paymentIds;
-
-  /// @inheritdoc IGrateful
   uint256 public performanceFee;
 
   /*//////////////////////////////////////////////////////////////
@@ -457,12 +454,6 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     if (_merchant == address(0) || _token == address(0)) {
       revert Grateful_InvalidAddress();
     }
-
-    // Check payment id
-    if (paymentIds[_paymentId]) {
-      revert Grateful_PaymentIdAlreadyUsed();
-    }
-    paymentIds[_paymentId] = true;
 
     // Apply the fee
     uint256 amountWithFee = applyFee(_merchant, _amount);
