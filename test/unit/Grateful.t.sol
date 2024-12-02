@@ -130,6 +130,11 @@ contract UnitGrateful is Test {
                                  TEST FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
+  /*//////////////////////////////////////////////////////////////
+                                 CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
+
+  // Test the constructor with valid arguments
   function test_ConstructorWhenPassingValidArgs() public {
     // Deploy the Grateful contract
     grateful = new Grateful(tokens, IPool(address(aavePool)), initialFee, initialPerformanceFee, owner);
@@ -142,11 +147,13 @@ contract UnitGrateful is Test {
     assertEq(grateful.tokensWhitelisted(address(token)), true);
   }
 
+  // Test the constructor with an invalid pool address
   function test_ConstructorWhenPassingInvalidPoolAddress() public {
     vm.expectRevert(abi.encodeWithSelector(IGrateful.Grateful_InvalidAddress.selector));
     grateful = new Grateful(tokens, IPool(address(0)), initialFee, initialPerformanceFee, owner);
   }
 
+  // Test the constructor with an invalid max fee
   function test_ConstructorWhenPassingInvalidMaxFee(
     uint256 invalidFee
   ) public {
@@ -155,6 +162,7 @@ contract UnitGrateful is Test {
     grateful = new Grateful(tokens, IPool(address(aavePool)), invalidFee, initialPerformanceFee, owner);
   }
 
+  // Test the constructor with an invalid max performance fee
   function test_ConstructorWhenPassingInvalidMaxPerformanceFee(
     uint256 invalidPerformanceFee
   ) public {
@@ -163,18 +171,53 @@ contract UnitGrateful is Test {
     grateful = new Grateful(tokens, IPool(address(aavePool)), initialFee, invalidPerformanceFee, owner);
   }
 
-  function test_AddAndRemoveToken() public {
+  /*//////////////////////////////////////////////////////////////
+                             TOKEN WHITELISTING
+    //////////////////////////////////////////////////////////////*/
+
+  // Test adding a token
+  function test_AddToken() public {
     address tokenToAdd = address(new ERC20Mock());
     vm.prank(owner);
+    vm.expectEmit(true, true, true, true);
+    emit IGrateful.TokenAdded(tokenToAdd);
     grateful.addToken(tokenToAdd);
-    assertEq(grateful.tokensWhitelisted(tokenToAdd), true);
-
-    vm.prank(owner);
-    grateful.removeToken(tokenToAdd);
-    assertEq(grateful.tokensWhitelisted(tokenToAdd), false);
+    assertTrue(grateful.tokensWhitelisted(tokenToAdd));
   }
 
-  function test_AddAndRemoveVault() public {
+  // Test removing a token
+  function test_RemoveToken() public {
+    address tokenToRemove = address(new ERC20Mock());
+    vm.prank(owner);
+    grateful.addToken(tokenToRemove);
+    vm.prank(owner);
+    vm.expectEmit(true, true, true, true);
+    emit IGrateful.TokenRemoved(tokenToRemove);
+    grateful.removeToken(tokenToRemove);
+    assertFalse(grateful.tokensWhitelisted(tokenToRemove));
+  }
+
+  // Test adding a token with an invalid address
+  function test_AddTokenWithInvalidAddress() public {
+    vm.prank(owner);
+    vm.expectRevert(abi.encodeWithSelector(IGrateful.Grateful_InvalidAddress.selector));
+    grateful.addToken(address(0));
+  }
+
+  // Test removing a token that is not whitelisted
+  function test_RemoveTokenNotWhitelisted() public {
+    address tokenToRemove = address(new ERC20Mock());
+    vm.prank(owner);
+    vm.expectRevert(abi.encodeWithSelector(IGrateful.Grateful_TokenOrVaultNotFound.selector));
+    grateful.removeToken(tokenToRemove);
+  }
+
+  /*//////////////////////////////////////////////////////////////
+                                 VAULTS
+    //////////////////////////////////////////////////////////////*/
+
+  // Test adding a vault
+  function test_AddVault() public {
     address newToken = address(new ERC20Mock());
     AaveV3Vault newVault = new AaveV3Vault(
       ERC20(newToken),
@@ -189,13 +232,113 @@ contract UnitGrateful is Test {
     grateful.addToken(newToken);
 
     vm.prank(owner);
+    vm.expectEmit(true, true, true, true);
+    emit IGrateful.VaultAdded(newToken, address(newVault));
     grateful.addVault(newToken, address(newVault));
 
     assertEq(address(grateful.vaults(newToken)), address(newVault));
+  }
+
+  // Test adding a vault when token is not whitelisted
+  function test_AddVaultTokenNotWhitelisted() public {
+    address newToken = address(new ERC20Mock());
+    AaveV3Vault newVault = new AaveV3Vault(
+      ERC20(newToken),
+      ERC20(address(aToken)),
+      IPool(address(aavePool)),
+      owner,
+      IRewardsController(address(rewardsController)),
+      address(grateful)
+    );
 
     vm.prank(owner);
-    grateful.removeVault(address(newToken));
+    vm.expectRevert(abi.encodeWithSelector(IGrateful.Grateful_TokenNotWhitelisted.selector));
+    grateful.addVault(newToken, address(newVault));
+  }
 
-    assertEq(address(grateful.vaults(address(newToken))), address(0));
+  // Test removing a vault
+  function test_RemoveVault() public {
+    address newToken = address(new ERC20Mock());
+    AaveV3Vault newVault = new AaveV3Vault(
+      ERC20(newToken),
+      ERC20(address(aToken)),
+      IPool(address(aavePool)),
+      owner,
+      IRewardsController(address(rewardsController)),
+      address(grateful)
+    );
+
+    vm.prank(owner);
+    grateful.addToken(newToken);
+    vm.prank(owner);
+    grateful.addVault(newToken, address(newVault));
+
+    vm.prank(owner);
+    vm.expectEmit(true, true, true, true);
+    emit IGrateful.VaultRemoved(newToken, address(newVault));
+    grateful.removeVault(newToken);
+
+    assertEq(address(grateful.vaults(newToken)), address(0));
+  }
+
+  // Test adding a vault with an invalid address
+  function test_AddVaultWithInvalidAddress() public {
+    address newToken = address(new ERC20Mock());
+    vm.prank(owner);
+    grateful.addToken(newToken);
+
+    vm.prank(owner);
+    vm.expectRevert(abi.encodeWithSelector(IGrateful.Grateful_InvalidAddress.selector));
+    grateful.addVault(newToken, address(0));
+  }
+
+  // Test removing a vault that is not added
+  function test_RemoveVaultNotAdded() public {
+    address newToken = address(new ERC20Mock());
+    vm.prank(owner);
+    grateful.addToken(newToken);
+
+    vm.prank(owner);
+    vm.expectRevert(abi.encodeWithSelector(IGrateful.Grateful_TokenOrVaultNotFound.selector));
+    grateful.removeVault(newToken);
+  }
+
+  /*//////////////////////////////////////////////////////////////
+                                 FEES
+    //////////////////////////////////////////////////////////////*/
+
+  // Test setting the fee
+  function test_SetFee() public {
+    uint256 newFee = grateful.MAX_FEE() - 1;
+    vm.prank(owner);
+    grateful.setFee(newFee);
+    assertEq(grateful.fee(), newFee);
+  }
+
+  // Test setting a custom fee
+  function test_SetCustomFee() public {
+    uint256 customFee = grateful.MAX_FEE() - 1;
+    vm.prank(owner);
+    grateful.setCustomFee(customFee, merchant);
+
+    (bool isSet, uint256 fee) = grateful.customFees(merchant);
+    assertEq(isSet, true);
+    assertEq(fee, customFee);
+  }
+
+  // Test setting the fee and reverting when the fee is too high
+  function test_SetFeeRevertsWhenFeeTooHigh() public {
+    uint256 invalidFee = grateful.MAX_FEE() + 1;
+    vm.prank(owner);
+    vm.expectRevert(abi.encodeWithSelector(IGrateful.Grateful_FeeRateTooHigh.selector));
+    grateful.setFee(invalidFee);
+  }
+
+  // Test setting a custom fee and reverting when the fee is too high
+  function test_SetCustomFeeRevertsWhenFeeTooHigh() public {
+    uint256 invalidCustomFee = grateful.MAX_FEE() + 1;
+    vm.prank(owner);
+    vm.expectRevert(abi.encodeWithSelector(IGrateful.Grateful_FeeRateTooHigh.selector));
+    grateful.setCustomFee(invalidCustomFee, merchant);
   }
 }
