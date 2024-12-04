@@ -22,7 +22,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IPool, IRewardsController} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
 contract UnitVaultManagement is UnitBase {
-  function test_AddVault() public {
+  function test_addVault() public {
     // Deploy a new token and whitelist it
     address newToken = address(new ERC20Mock());
     vm.prank(owner);
@@ -80,7 +80,7 @@ contract UnitVaultManagement is UnitBase {
     grateful.addVault(newToken, address(0));
   }
 
-  function test_RemoveVault() public {
+  function test_removeVault() public {
     // Deploy and whitelist a new token
     address newToken = address(new ERC20Mock());
     vm.prank(owner);

@@ -150,10 +150,10 @@ interface IGrateful {
   /*///////////////////////////////////////////////////////////////
                                    VARIABLES
     //////////////////////////////////////////////////////////////*/
-  /// @notice Returns the maximum fee in basis points (10000 = 100%).
+  /// @notice Returns the maximum fee in basis points (1e18 = 100%).
   function MAX_FEE() external pure returns (uint256);
 
-  /// @notice Returns the maximum performance fee in basis points (5000 = 50%).
+  /// @notice Returns the maximum performance fee in basis points (0.5e18 = 50%).
   function MAX_PERFORMANCE_FEE() external pure returns (uint256);
 
   /// @notice Returns the owner of the contract.
@@ -196,7 +196,7 @@ interface IGrateful {
   ) external view returns (bool);
 
   /// @notice Returns the fee applied to the payments.
-  /// @return Fee in basis points (10000 = 100%).
+  /// @return Fee in basis points (1e18 = 100%).
   function fee() external view returns (uint256);
 
   /// @notice Returns the performance fee rate.
@@ -392,7 +392,7 @@ interface IGrateful {
 
   /**
    * @notice Sets a new fee.
-   * @param _newFee New fee to be applied (in basis points, 10000 = 100%).
+   * @param _newFee New fee to be applied (in basis points, 1e18 = 100%).
    */
   function setFee(
     uint256 _newFee
@@ -408,7 +408,7 @@ interface IGrateful {
 
   /**
    * @notice Sets a new custom fee for a certain merchant.
-   * @param _newFee New fee to be applied (in basis points, 10000 = 100%).
+   * @param _newFee New fee to be applied (in basis points, 1e18 = 100%).
    * @param _merchant Address of the merchant.
    */
   function setCustomFee(uint256 _newFee, address _merchant) external;

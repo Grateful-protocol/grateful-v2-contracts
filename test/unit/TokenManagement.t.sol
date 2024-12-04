@@ -11,7 +11,7 @@ import {ERC20Mock} from "test/mocks/ERC20Mock.sol";
 import {Grateful, IGrateful} from "contracts/Grateful.sol";
 
 contract UnitTokenManagement is UnitBase {
-  function test_AddTokenSuccess() public {
+  function test_addTokenSuccess() public {
     address tokenToAdd = address(new ERC20Mock());
     vm.prank(owner);
     vm.expectEmit(true, true, true, true);
@@ -26,7 +26,7 @@ contract UnitTokenManagement is UnitBase {
     grateful.addToken(address(0));
   }
 
-  function test_RemoveTokenSuccess() public {
+  function test_removeTokenSuccess() public {
     address tokenToRemove = address(new ERC20Mock());
     vm.prank(owner);
     grateful.addToken(tokenToRemove);

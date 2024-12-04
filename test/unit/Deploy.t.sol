@@ -12,7 +12,7 @@ import {UnitBase} from "./helpers/Base.t.sol";
 
 contract UnitDeploy is UnitBase {
   // Test the constructor with valid arguments
-  function test_ConstructorWhenPassingValidArgs() public {
+  function test_constructorWhenPassingValidArgs() public {
     // Deploy the Grateful contract
     grateful = new Grateful(tokens, IPool(address(aavePool)), initialFee, initialPerformanceFee, owner);
 
