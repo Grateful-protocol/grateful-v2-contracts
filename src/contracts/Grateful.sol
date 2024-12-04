@@ -203,10 +203,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   /// @inheritdoc IGrateful
   function removeToken(
     address _token
-  ) external onlyOwner {
-    if (!tokensWhitelisted[_token]) {
-      revert Grateful_TokenOrVaultNotFound();
-    }
+  ) external onlyOwner onlyWhenTokenWhitelisted(_token) {
     delete tokensWhitelisted[_token];
     IERC20 token = IERC20(_token);
     token.forceApprove(address(aavePool), 0);
