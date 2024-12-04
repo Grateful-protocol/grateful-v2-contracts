@@ -25,13 +25,13 @@ contract UnitDeploy is UnitBase {
   }
 
   // Test the constructor with an invalid pool address
-  function test_ConstructorWhenPassingInvalidPoolAddress() public {
+  function test_revertIfConstructorWhenPassingInvalidPoolAddress() public {
     vm.expectRevert(abi.encodeWithSelector(IGrateful.Grateful_InvalidAddress.selector));
     grateful = new Grateful(tokens, IPool(address(0)), initialFee, initialPerformanceFee, owner);
   }
 
   // Test the constructor with an invalid max fee
-  function test_ConstructorWhenPassingInvalidMaxFee(
+  function test_revertIfConstructorWhenPassingInvalidMaxFee(
     uint256 invalidFee
   ) public {
     vm.assume(invalidFee > grateful.MAX_FEE());
@@ -40,7 +40,7 @@ contract UnitDeploy is UnitBase {
   }
 
   // Test the constructor with an invalid max performance fee
-  function test_ConstructorWhenPassingInvalidMaxPerformanceFee(
+  function test_revertIfConstructorWhenPassingInvalidMaxPerformanceFee(
     uint256 invalidPerformanceFee
   ) public {
     vm.assume(invalidPerformanceFee > grateful.MAX_PERFORMANCE_FEE());

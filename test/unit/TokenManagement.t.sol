@@ -20,7 +20,7 @@ contract UnitTokenManagement is UnitBase {
     assertTrue(grateful.tokensWhitelisted(tokenToAdd));
   }
 
-  function test_AddTokenInvalidAddress() public {
+  function test_revertIfAddTokenInvalidAddress() public {
     vm.prank(owner);
     vm.expectRevert(IGrateful.Grateful_InvalidAddress.selector);
     grateful.addToken(address(0));
@@ -37,7 +37,7 @@ contract UnitTokenManagement is UnitBase {
     assertFalse(grateful.tokensWhitelisted(tokenToRemove));
   }
 
-  function test_RemoveTokenNotWhitelisted() public {
+  function test_revertIfRemoveTokenNotWhitelisted() public {
     address tokenToRemove = address(new ERC20Mock());
     vm.prank(owner);
     vm.expectRevert(IGrateful.Grateful_TokenNotWhitelisted.selector);
