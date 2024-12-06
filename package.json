@@ -32,6 +32,7 @@
     "test:arbitrum-sepolia": "TESTING=true FORKED_NETWORK=arbitrum-sepolia FORK_BLOCK=98684306 forge test -vvv ",
     "test:base": "TESTING=true FORKED_NETWORK=base FORK_BLOCK=20648648 forge test -vvv ",
     "test:bnb": "TESTING=true FORKED_NETWORK=bnb FORK_BLOCK=44138162 forge test -vvv ",
+    "test:integration": "TESTING=true FORKED_NETWORK=mainnet FORK_BLOCK=18920905 forge test -vvv --match-contract Integration -vvv",
     "test:optimism": "TESTING=true FORKED_NETWORK=optimism FORK_BLOCK=121238511 forge test -vvv ",
     "test:optimism-sepolia": "TESTING=true FORKED_NETWORK=optimism-sepolia FORK_BLOCK=20113040 forge test -vvv ",
     "test:polygon": "TESTING=true FORKED_NETWORK=polygon FORK_BLOCK=62103393 forge test -vvv ",

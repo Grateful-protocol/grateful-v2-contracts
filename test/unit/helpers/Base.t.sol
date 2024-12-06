@@ -146,6 +146,14 @@ contract UnitBase is Test {
     // Set reserve AToken in the mock pool
     aavePool.setReserveAToken(newToken, address(aToken));
 
+    // Add the new token to the Grateful contract
+    vm.startPrank(owner);
+    grateful.addToken(newToken);
+
+    // Add the new AaveV3Vault to the Grateful contract
+    grateful.addVault(newToken, address(newVault));
+    vm.stopPrank();
+
     return (newToken, newVault);
   }
 }
