@@ -42,9 +42,9 @@ contract UnitWithdrawal is UnitBase {
   }
 
   function test_withdrawPartialSuccess() public {
-    uint256 amount = 1000 ether;
+    uint256 amount = 10 ether;
     uint256 paymentId = 1;
-    uint256 withdrawAmount = 500 ether;
+    uint256 withdrawAmount = 5 ether;
     uint256 tolerance = withdrawAmount / 10_000; // 0.01% precision loss tolerance
 
     vm.prank(user);
@@ -58,6 +58,8 @@ contract UnitWithdrawal is UnitBase {
     uint256 initialDeposit = grateful.userDeposits(merchant, address(token));
 
     vm.prank(merchant);
+    vm.expectEmit(true, true, true, true);
+    emit IGrateful.Withdrawal(merchant, address(token), withdrawAmount, 0);
     grateful.withdraw(address(token), withdrawAmount);
 
     uint256 finalMerchantBalance = token.balanceOf(merchant);
@@ -110,59 +112,46 @@ contract UnitWithdrawal is UnitBase {
     assertEq(finalMerchantBalanceToken2, expectedMerchantBalanceToken2);
   }
 
-  /* function test_withdrawMultiplePartialSuccess() public {
-        address token2 = address(new ERC20Mock());
-        vm.prank(owner);
-        grateful.addToken(token2);
+  function test_withdrawMultiplePartialSuccess() public {
+    (address token2, AaveV3Vault vault2) = _deployNewTokenAndVault();
 
-        AaveV3Vault vault2 = new AaveV3Vault(
-            ERC20(token2),
-            ERC20(address(aToken)),
-            IPool(address(aavePool)),
-            owner,
-            IRewardsController(address(rewardsController)),
-            address(grateful)
-        );
-        vm.prank(owner);
-        grateful.addVault(token2, address(vault2));
+    uint256 amount = 10 ether;
+    uint256 paymentId1 = 1;
+    uint256 paymentId2 = 2;
 
-        uint256 amount = 1000 ether;
-        uint256 paymentId1 = 1;
-        uint256 paymentId2 = 2;
+    vm.startPrank(user);
+    token.mint(user, amount);
+    token.approve(address(grateful), amount);
+    grateful.pay(merchant, address(token), amount, paymentId1, true);
 
-        vm.prank(user);
-        ERC20Mock(token2).mint(user, amount);
+    ERC20Mock(token2).mint(user, amount);
+    ERC20Mock(token2).approve(address(grateful), amount);
+    grateful.pay(merchant, token2, amount, paymentId2, true);
+    vm.stopPrank();
 
-        vm.startPrank(user);
-        token.mint(user, amount);
-        token.approve(address(grateful), amount);
-        grateful.pay(merchant, address(token), amount, paymentId1, true);
+    address[] memory tokens = new address[](2);
+    tokens[0] = address(token);
+    tokens[1] = token2;
 
-        ERC20Mock(token2).approve(address(grateful), amount);
-        grateful.pay(merchant, token2, amount, paymentId2, true);
-        vm.stopPrank();
+    uint256[] memory assets = new uint256[](2);
+    assets[0] = 5 ether;
+    assets[1] = 5 ether;
 
-        address[] memory tokens = new address[](2);
-        tokens[0] = address(token);
-        tokens[1] = token2;
+    vm.prank(merchant);
+    vm.expectEmit(true, true, true, true);
+    emit IGrateful.Withdrawal(merchant, address(token), assets[0], 0);
+    vm.expectEmit(true, true, true, true);
+    emit IGrateful.Withdrawal(merchant, token2, assets[1], 0);
+    grateful.withdrawMultiple(tokens, assets);
 
-        uint256[] memory assets = new uint256[](2);
-        assets[0] = 500 ether;
-        assets[1] = 500 ether;
+    uint256 finalMerchantBalanceToken1 = token.balanceOf(merchant);
+    uint256 finalMerchantBalanceToken2 = ERC20Mock(token2).balanceOf(merchant);
 
-        vm.prank(merchant);
-        vm.expectEmit(true, true, true, true);
-        emit IGrateful.Withdrawal(merchant, address(token), assets[0], 0);
-        vm.expectEmit(true, true, true, true);
-        emit IGrateful.Withdrawal(merchant, token2, assets[1], 0);
-        grateful.withdrawMultiple(tokens, assets);
+    uint256 tolerance = (assets[0] * 1) / 10_000; // 0.01% precision loss tolerance
 
-        uint256 finalMerchantBalanceToken1 = token.balanceOf(merchant);
-        uint256 finalMerchantBalanceToken2 = ERC20Mock(token2).balanceOf(merchant);
-
-        assertEq(finalMerchantBalanceToken1, assets[0]);
-        assertEq(finalMerchantBalanceToken2, assets[1]);
-    } */
+    assertApproxEqAbs(finalMerchantBalanceToken1, assets[0], tolerance);
+    assertApproxEqAbs(finalMerchantBalanceToken2, assets[1], tolerance);
+  }
 
   function test_revertIfWithdrawTokenNotWhitelisted() public {
     address nonWhitelistedToken = address(new ERC20Mock());
