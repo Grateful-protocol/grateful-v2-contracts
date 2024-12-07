@@ -459,7 +459,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     if (_amount == 0) {
       revert Grateful_InvalidAmount();
     }
-    if (_merchant == address(0) || _token == address(0)) {
+    if (_merchant == address(0)) {
       revert Grateful_InvalidAddress();
     }
 
