@@ -291,7 +291,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     if (!oneTimePayments[msg.sender]) {
       revert Grateful_OneTimeNotFound();
     }
-    if (_merchant == address(0) || _token == address(0)) {
+    if (_merchant == address(0)) {
       revert Grateful_InvalidAddress();
     }
     _processPayment(msg.sender, _merchant, _token, _amount, _paymentId, _yieldFunds);
