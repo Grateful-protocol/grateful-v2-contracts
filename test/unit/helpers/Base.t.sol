@@ -44,6 +44,7 @@ contract UnitBase is Test {
   address internal owner = address(0x1);
   address internal merchant = address(0x2);
   address internal user = address(0x3);
+  address internal gratefulAutomation = address(0x4);
 
   // Token and fee parameters
   address[] internal tokens;

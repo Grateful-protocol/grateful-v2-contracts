@@ -20,7 +20,7 @@ contract UnitWithdrawal is UnitBase {
     vm.assume(amount > 1e8);
     vm.assume(amount <= 10 ether);
     vm.assume(amount <= type(uint256).max / grateful.fee());
-    uint256 paymentId = 1;
+    uint256 paymentId = grateful.calculateId(user, merchant, address(token), amount);
 
     vm.prank(user);
     token.mint(user, amount);
@@ -30,10 +30,12 @@ contract UnitWithdrawal is UnitBase {
     grateful.pay(merchant, address(token), amount, paymentId, true);
 
     uint256 initialDeposit = grateful.userDeposits(merchant, address(token));
+    uint256 assetsToWithdraw = grateful.calculateAssets(merchant, address(token));
+    uint256 profit = grateful.calculateProfit(merchant, address(token));
 
     vm.prank(merchant);
     vm.expectEmit(true, true, true, true);
-    emit IGrateful.Withdrawal(merchant, address(token), initialDeposit, 0);
+    emit IGrateful.Withdrawal(merchant, address(token), assetsToWithdraw, profit);
     grateful.withdraw(address(token));
 
     uint256 finalMerchantBalance = token.balanceOf(merchant);
@@ -42,7 +44,7 @@ contract UnitWithdrawal is UnitBase {
 
     assertEq(finalShares, 0);
     assertEq(finalDeposit, 0);
-    assertEq(finalMerchantBalance, initialDeposit);
+    assertEq(finalMerchantBalance, assetsToWithdraw);
   }
 
   function test_withdrawPartialSuccess(uint128 amount, uint128 withdrawAmount) public {
@@ -53,7 +55,7 @@ contract UnitWithdrawal is UnitBase {
     vm.assume(withdrawAmount <= grateful.applyFee(merchant, amount));
     vm.assume(withdrawAmount >= 100_000); // Ensure withdrawAmount is large enough for meaningful tolerance
 
-    uint256 paymentId = 1;
+    uint256 paymentId = grateful.calculateId(user, merchant, address(token), amount);
     uint256 tolerance = withdrawAmount / 10_000; // 0.01% precision loss tolerance
 
     vm.prank(user);
@@ -65,10 +67,11 @@ contract UnitWithdrawal is UnitBase {
 
     uint256 initialShares = grateful.shares(merchant, address(token));
     uint256 initialDeposit = grateful.userDeposits(merchant, address(token));
+    uint256 profit = grateful.calculateProfit(merchant, address(token));
 
     vm.prank(merchant);
     vm.expectEmit(true, true, true, true);
-    emit IGrateful.Withdrawal(merchant, address(token), withdrawAmount, 0);
+    emit IGrateful.Withdrawal(merchant, address(token), withdrawAmount, profit);
     grateful.withdraw(address(token), withdrawAmount);
 
     uint256 finalMerchantBalance = token.balanceOf(merchant);
@@ -91,8 +94,8 @@ contract UnitWithdrawal is UnitBase {
 
     (address token2, AaveV3Vault vault2) = _deployNewTokenAndVault();
 
-    uint256 paymentId1 = 1;
-    uint256 paymentId2 = 2;
+    uint256 paymentId1 = grateful.calculateId(user, merchant, address(token), amount);
+    uint256 paymentId2 = grateful.calculateId(user, merchant, token2, amount);
 
     vm.startPrank(user);
     token.mint(user, amount);
@@ -109,21 +112,23 @@ contract UnitWithdrawal is UnitBase {
     tokens[0] = address(token);
     tokens[1] = token2;
 
-    uint256 expectedMerchantBalanceToken1 = grateful.userDeposits(merchant, address(token));
-    uint256 expectedMerchantBalanceToken2 = grateful.userDeposits(merchant, token2);
+    uint256 assetsToken1 = grateful.calculateAssets(merchant, address(token));
+    uint256 assetsToken2 = grateful.calculateAssets(merchant, token2);
+    uint256 profitToken1 = grateful.calculateProfit(merchant, address(token));
+    uint256 profitToken2 = grateful.calculateProfit(merchant, token2);
 
     vm.prank(merchant);
     vm.expectEmit(true, true, true, true);
-    emit IGrateful.Withdrawal(merchant, address(token), expectedMerchantBalanceToken1, 0);
+    emit IGrateful.Withdrawal(merchant, address(token), assetsToken1, profitToken1);
     vm.expectEmit(true, true, true, true);
-    emit IGrateful.Withdrawal(merchant, token2, expectedMerchantBalanceToken2, 0);
+    emit IGrateful.Withdrawal(merchant, token2, assetsToken2, profitToken2);
     grateful.withdrawMultiple(tokens);
 
     uint256 finalMerchantBalanceToken1 = token.balanceOf(merchant);
     uint256 finalMerchantBalanceToken2 = ERC20Mock(token2).balanceOf(merchant);
 
-    assertEq(finalMerchantBalanceToken1, expectedMerchantBalanceToken1);
-    assertEq(finalMerchantBalanceToken2, expectedMerchantBalanceToken2);
+    assertEq(finalMerchantBalanceToken1, assetsToken1);
+    assertEq(finalMerchantBalanceToken2, assetsToken2);
   }
 
   function test_withdrawMultiplePartialSuccess(uint128 amount, uint128 withdrawAmount) public {
@@ -136,8 +141,8 @@ contract UnitWithdrawal is UnitBase {
 
     (address token2, AaveV3Vault vault2) = _deployNewTokenAndVault();
 
-    uint256 paymentId1 = 1;
-    uint256 paymentId2 = 2;
+    uint256 paymentId1 = grateful.calculateId(user, merchant, address(token), amount);
+    uint256 paymentId2 = grateful.calculateId(user, merchant, token2, amount);
 
     vm.startPrank(user);
     token.mint(user, amount);
@@ -157,11 +162,14 @@ contract UnitWithdrawal is UnitBase {
     assets[0] = withdrawAmount;
     assets[1] = withdrawAmount;
 
+    uint256 profitToken1 = grateful.calculateProfit(merchant, address(token));
+    uint256 profitToken2 = grateful.calculateProfit(merchant, token2);
+
     vm.prank(merchant);
     vm.expectEmit(true, true, true, true);
-    emit IGrateful.Withdrawal(merchant, address(token), assets[0], 0);
+    emit IGrateful.Withdrawal(merchant, address(token), assets[0], profitToken1);
     vm.expectEmit(true, true, true, true);
-    emit IGrateful.Withdrawal(merchant, token2, assets[1], 0);
+    emit IGrateful.Withdrawal(merchant, token2, assets[1], profitToken2);
     grateful.withdrawMultiple(tokens, assets);
 
     uint256 finalMerchantBalanceToken1 = token.balanceOf(merchant);
@@ -202,7 +210,7 @@ contract UnitWithdrawal is UnitBase {
     vm.assume(amount > 0);
     vm.assume(amount <= 10 ether);
     vm.assume(amount <= type(uint256).max / grateful.fee());
-    uint256 paymentId = 1;
+    uint256 paymentId = grateful.calculateId(user, merchant, address(token), amount);
 
     vm.prank(user);
     token.mint(user, amount);
@@ -222,7 +230,7 @@ contract UnitWithdrawal is UnitBase {
     vm.assume(amount > 0);
     vm.assume(amount <= 10 ether);
     vm.assume(amount <= type(uint256).max / grateful.fee());
-    uint256 paymentId = 1;
+    uint256 paymentId = grateful.calculateId(user, merchant, address(token), amount);
 
     vm.prank(user);
     token.mint(user, amount);

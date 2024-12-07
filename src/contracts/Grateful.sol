@@ -263,13 +263,16 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     if (_merchant == address(0)) {
       revert Grateful_InvalidAddress();
     }
+
+    address precomputed = address(computeOneTimeAddress(_merchant, _tokens, _amount, _salt, _paymentId, _yieldFunds));
+
+    if (precomputed != _precomputed) {
+      revert Grateful_PrecomputedAddressMismatch();
+    }
+
     oneTimePayments[_precomputed] = true;
     oneTime =
       new OneTime{salt: bytes32(_salt)}(IGrateful(address(this)), _tokens, _merchant, _amount, _paymentId, _yieldFunds);
-
-    if (address(oneTime) != _precomputed) {
-      revert Grateful_PrecomputedAddressMismatch();
-    }
 
     emit OneTimePaymentCreated(_merchant, _tokens, _amount);
   }
@@ -299,7 +302,7 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     uint256 _salt,
     uint256 _paymentId,
     bool _yieldFunds
-  ) external view returns (OneTime oneTime) {
+  ) public view returns (OneTime oneTime) {
     bytes memory bytecode = abi.encodePacked(
       type(OneTime).creationCode, abi.encode(address(this), _tokens, _merchant, _amount, _paymentId, _yieldFunds)
     );
