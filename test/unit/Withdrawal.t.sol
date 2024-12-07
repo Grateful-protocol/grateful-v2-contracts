@@ -29,13 +29,22 @@ contract UnitWithdrawal is UnitBase {
     vm.prank(user);
     grateful.pay(merchant, address(token), amount, paymentId, true);
 
-    uint256 initialDeposit = grateful.userDeposits(merchant, address(token));
+    uint256 mutationAmount = amount * 10;
+
+    token.mint(address(aavePool), mutationAmount);
+    aToken.mint(address(aaveVault), mutationAmount);
+
+    uint256 expectedVaultBalance = grateful.applyFee(merchant, amount) + mutationAmount;
+
+    assertEq(aaveVault.totalAssets(), expectedVaultBalance);
+
     uint256 assetsToWithdraw = grateful.calculateAssets(merchant, address(token));
     uint256 profit = grateful.calculateProfit(merchant, address(token));
+    uint256 performanceFee = grateful.calculatePerformanceFee(profit);
 
     vm.prank(merchant);
     vm.expectEmit(true, true, true, true);
-    emit IGrateful.Withdrawal(merchant, address(token), assetsToWithdraw, profit);
+    emit IGrateful.Withdrawal(merchant, address(token), assetsToWithdraw, performanceFee);
     grateful.withdraw(address(token));
 
     uint256 finalMerchantBalance = token.balanceOf(merchant);
@@ -44,7 +53,7 @@ contract UnitWithdrawal is UnitBase {
 
     assertEq(finalShares, 0);
     assertEq(finalDeposit, 0);
-    assertEq(finalMerchantBalance, assetsToWithdraw);
+    assertEq(finalMerchantBalance, assetsToWithdraw - performanceFee);
   }
 
   function test_withdrawPartialSuccess(uint128 amount, uint128 withdrawAmount) public {
@@ -58,6 +67,9 @@ contract UnitWithdrawal is UnitBase {
     uint256 paymentId = grateful.calculateId(user, merchant, address(token), amount);
     uint256 tolerance = withdrawAmount / 10_000; // 0.01% precision loss tolerance
 
+    // Should have 0 profit
+    assertEq(grateful.calculateProfit(merchant, address(token)), 0);
+
     vm.prank(user);
     token.mint(user, amount);
     vm.prank(user);
@@ -68,10 +80,11 @@ contract UnitWithdrawal is UnitBase {
     uint256 initialShares = grateful.shares(merchant, address(token));
     uint256 initialDeposit = grateful.userDeposits(merchant, address(token));
     uint256 profit = grateful.calculateProfit(merchant, address(token));
+    uint256 performanceFee = grateful.calculatePerformanceFee(profit);
 
     vm.prank(merchant);
     vm.expectEmit(true, true, true, true);
-    emit IGrateful.Withdrawal(merchant, address(token), withdrawAmount, profit);
+    emit IGrateful.Withdrawal(merchant, address(token), withdrawAmount, performanceFee);
     grateful.withdraw(address(token), withdrawAmount);
 
     uint256 finalMerchantBalance = token.balanceOf(merchant);
@@ -79,7 +92,7 @@ contract UnitWithdrawal is UnitBase {
     uint256 finalDeposit = grateful.userDeposits(merchant, address(token));
 
     // Use assertApproxEqAbs to allow for small precision errors
-    assertApproxEqAbs(finalMerchantBalance, withdrawAmount, tolerance);
+    assertApproxEqAbs(finalMerchantBalance, withdrawAmount - performanceFee, tolerance);
     assertLt(finalShares, initialShares);
     assertLt(finalDeposit, initialDeposit);
     assertApproxEqAbs(finalDeposit, initialDeposit - withdrawAmount, tolerance);
@@ -116,19 +129,21 @@ contract UnitWithdrawal is UnitBase {
     uint256 assetsToken2 = grateful.calculateAssets(merchant, token2);
     uint256 profitToken1 = grateful.calculateProfit(merchant, address(token));
     uint256 profitToken2 = grateful.calculateProfit(merchant, token2);
+    uint256 performanceFeeToken1 = grateful.calculatePerformanceFee(profitToken1);
+    uint256 performanceFeeToken2 = grateful.calculatePerformanceFee(profitToken2);
 
     vm.prank(merchant);
     vm.expectEmit(true, true, true, true);
-    emit IGrateful.Withdrawal(merchant, address(token), assetsToken1, profitToken1);
+    emit IGrateful.Withdrawal(merchant, address(token), assetsToken1, performanceFeeToken1);
     vm.expectEmit(true, true, true, true);
-    emit IGrateful.Withdrawal(merchant, token2, assetsToken2, profitToken2);
+    emit IGrateful.Withdrawal(merchant, token2, assetsToken2, performanceFeeToken2);
     grateful.withdrawMultiple(tokens);
 
     uint256 finalMerchantBalanceToken1 = token.balanceOf(merchant);
     uint256 finalMerchantBalanceToken2 = ERC20Mock(token2).balanceOf(merchant);
 
-    assertEq(finalMerchantBalanceToken1, assetsToken1);
-    assertEq(finalMerchantBalanceToken2, assetsToken2);
+    assertEq(finalMerchantBalanceToken1, assetsToken1 - performanceFeeToken1);
+    assertEq(finalMerchantBalanceToken2, assetsToken2 - performanceFeeToken2);
   }
 
   function test_withdrawMultiplePartialSuccess(uint128 amount, uint128 withdrawAmount) public {
@@ -164,12 +179,14 @@ contract UnitWithdrawal is UnitBase {
 
     uint256 profitToken1 = grateful.calculateProfit(merchant, address(token));
     uint256 profitToken2 = grateful.calculateProfit(merchant, token2);
+    uint256 performanceFeeToken1 = grateful.calculatePerformanceFee(profitToken1);
+    uint256 performanceFeeToken2 = grateful.calculatePerformanceFee(profitToken2);
 
     vm.prank(merchant);
     vm.expectEmit(true, true, true, true);
-    emit IGrateful.Withdrawal(merchant, address(token), assets[0], profitToken1);
+    emit IGrateful.Withdrawal(merchant, address(token), assets[0], performanceFeeToken1);
     vm.expectEmit(true, true, true, true);
-    emit IGrateful.Withdrawal(merchant, token2, assets[1], profitToken2);
+    emit IGrateful.Withdrawal(merchant, token2, assets[1], performanceFeeToken2);
     grateful.withdrawMultiple(tokens, assets);
 
     uint256 finalMerchantBalanceToken1 = token.balanceOf(merchant);
@@ -177,8 +194,8 @@ contract UnitWithdrawal is UnitBase {
 
     uint256 tolerance = (withdrawAmount * 1) / 10_000; // 0.01% precision loss tolerance
 
-    assertApproxEqAbs(finalMerchantBalanceToken1, assets[0], tolerance);
-    assertApproxEqAbs(finalMerchantBalanceToken2, assets[1], tolerance);
+    assertApproxEqAbs(finalMerchantBalanceToken1, assets[0] - performanceFeeToken1, tolerance);
+    assertApproxEqAbs(finalMerchantBalanceToken2, assets[1] - performanceFeeToken2, tolerance);
   }
 
   function test_revertIfWithdrawTokenNotWhitelisted() public {

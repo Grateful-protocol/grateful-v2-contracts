@@ -181,4 +181,25 @@ contract UnitOneTimePayment is UnitBase {
     vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
     oneTime.rescueFunds(IERC20(address(token)), user, amount);
   }
+
+  function test_revertIfReceiveOneTimePaymentNotOneTime(uint128 amount, uint128 paymentId) public {
+    vm.assume(amount > 0);
+
+    vm.prank(user);
+    vm.expectRevert(IGrateful.Grateful_OneTimeNotFound.selector);
+    grateful.receiveOneTimePayment(merchant, address(token), paymentId, amount, false);
+  }
+
+  function test_revertIfReceiveOneTimePaymentInvalidMerchant(uint128 amount, uint128 paymentId, uint128 salt) public {
+    vm.assume(amount > 0);
+
+    address precomputed = address(grateful.computeOneTimeAddress(merchant, tokens, amount, salt, paymentId, false));
+
+    vm.prank(gratefulAutomation);
+    OneTime oneTime = grateful.createOneTimePayment(merchant, tokens, amount, salt, paymentId, false, precomputed);
+
+    vm.prank(address(oneTime));
+    vm.expectRevert(IGrateful.Grateful_InvalidAddress.selector);
+    grateful.receiveOneTimePayment(address(0), address(token), paymentId, amount, false);
+  }
 }
