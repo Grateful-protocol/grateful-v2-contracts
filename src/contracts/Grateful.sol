@@ -165,9 +165,6 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
 
   /// @inheritdoc IGrateful
   function calculateProfit(address _user, address _token) public view returns (uint256 profit) {
-    if (shares[_user][_token] == 0) {
-      return 0;
-    }
     AaveV3Vault vault = vaults[_token];
     uint256 sharesAmount = shares[_user][_token];
     uint256 assets = vault.previewRedeem(sharesAmount); // Current value of user's shares
@@ -455,7 +452,6 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     uint256 _paymentId,
     bool _yieldFunds
   ) private nonReentrant {
-    // Validate amount
     if (_amount == 0) {
       revert Grateful_InvalidAmount();
     }
