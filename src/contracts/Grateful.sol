@@ -244,9 +244,6 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     uint256 _id,
     bool _yieldFunds
   ) external onlyWhenTokenWhitelisted(_token) {
-    if (_merchant == address(0)) {
-      revert Grateful_InvalidAddress();
-    }
     _processPayment(msg.sender, _merchant, _token, _amount, _id, _yieldFunds);
   }
 
@@ -260,10 +257,6 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     bool _yieldFunds,
     address _precomputed
   ) external onlyWhenTokensWhitelisted(_tokens) returns (OneTime oneTime) {
-    if (_merchant == address(0)) {
-      revert Grateful_InvalidAddress();
-    }
-
     address precomputed = address(computeOneTimeAddress(_merchant, _tokens, _amount, _salt, _paymentId, _yieldFunds));
 
     if (precomputed != _precomputed) {
@@ -287,9 +280,6 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
   ) external {
     if (!oneTimePayments[msg.sender]) {
       revert Grateful_OneTimeNotFound();
-    }
-    if (_merchant == address(0)) {
-      revert Grateful_InvalidAddress();
     }
     _processPayment(msg.sender, _merchant, _token, _amount, _paymentId, _yieldFunds);
   }
