@@ -257,6 +257,10 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
     bool _yieldFunds,
     address _precomputed
   ) external onlyWhenTokensWhitelisted(_tokens) returns (OneTime oneTime) {
+    if (_merchant == address(0)) {
+      revert Grateful_InvalidAddress();
+    }
+
     address precomputed = address(computeOneTimeAddress(_merchant, _tokens, _amount, _salt, _paymentId, _yieldFunds));
 
     if (precomputed != _precomputed) {
