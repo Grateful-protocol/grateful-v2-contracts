@@ -9,9 +9,9 @@ import {Grateful, IGrateful} from "contracts/Grateful.sol";
 import {ERC20Mock} from "test/mocks/ERC20Mock.sol";
 
 contract UnitPayment is UnitBase {
-  function test_paySuccessWithoutYield() public {
-    uint256 amount = 1000 ether;
-    uint256 paymentId = 1;
+  function test_paySuccessWithoutYield(uint256 amount, uint256 paymentId) public {
+    vm.assume(amount > 0);
+    vm.assume(amount <= type(uint256).max / grateful.fee());
 
     vm.prank(user);
     token.mint(user, amount);
@@ -30,9 +30,9 @@ contract UnitPayment is UnitBase {
     assertEq(token.balanceOf(merchant), expectedMerchantAmount);
   }
 
-  function test_paySuccessWithYield() public {
-    uint256 amount = 1000 ether;
-    uint256 paymentId = 1;
+  function test_paySuccessWithYield(uint256 amount, uint256 paymentId) public {
+    vm.assume(amount > 0);
+    vm.assume(amount <= type(uint256).max / grateful.fee());
 
     vm.prank(user);
     token.mint(user, amount);
@@ -57,11 +57,9 @@ contract UnitPayment is UnitBase {
     assertEq(merchantDeposit, amountAfterFee);
   }
 
-  function test_revertIfPayWithNonWhitelistedToken() public {
+  function test_revertIfPayWithNonWhitelistedToken(uint256 amount, uint256 paymentId) public {
+    vm.assume(amount > 0);
     ERC20Mock nonWhitelistedToken = new ERC20Mock();
-
-    uint256 amount = 1000 ether;
-    uint256 paymentId = 1;
 
     vm.prank(user);
     nonWhitelistedToken.mint(user, amount);
@@ -73,9 +71,10 @@ contract UnitPayment is UnitBase {
     grateful.pay(merchant, address(nonWhitelistedToken), amount, paymentId, false);
   }
 
-  function test_revertIfPayWithZeroAmount() public {
+  function test_revertIfPayWithZeroAmount(
+    uint256 paymentId
+  ) public {
     uint256 amount = 0;
-    uint256 paymentId = 1;
 
     vm.prank(user);
     token.approve(address(grateful), amount);
@@ -85,9 +84,8 @@ contract UnitPayment is UnitBase {
     grateful.pay(merchant, address(token), amount, paymentId, false);
   }
 
-  function test_revertIfPayWithInvalidMerchant() public {
-    uint256 amount = 1000 ether;
-    uint256 paymentId = 1;
+  function test_revertIfPayWithInvalidMerchant(uint256 amount, uint256 paymentId) public {
+    vm.assume(amount > 0);
 
     vm.prank(user);
     token.approve(address(grateful), amount);
@@ -97,9 +95,8 @@ contract UnitPayment is UnitBase {
     grateful.pay(address(0), address(token), amount, paymentId, false);
   }
 
-  function test_revertIfPayWithInsufficientAllowance() public {
-    uint256 amount = 1000 ether;
-    uint256 paymentId = 1;
+  function test_revertIfPayWithInsufficientAllowance(uint256 amount, uint256 paymentId) public {
+    vm.assume(amount > 0);
 
     vm.prank(user);
     token.mint(user, amount);
@@ -109,9 +106,8 @@ contract UnitPayment is UnitBase {
     grateful.pay(merchant, address(token), amount, paymentId, false);
   }
 
-  function test_revertIfPayWithInsufficientBalance() public {
-    uint256 amount = 1000 ether;
-    uint256 paymentId = 1;
+  function test_revertIfPayWithInsufficientBalance(uint256 amount, uint256 paymentId) public {
+    vm.assume(amount > 0);
 
     vm.prank(user);
     token.approve(address(grateful), amount);
@@ -121,21 +117,20 @@ contract UnitPayment is UnitBase {
     grateful.pay(merchant, address(token), amount, paymentId, false);
   }
 
-  function test_revertIfPayWithInvalidTokenAddress() public {
-    uint256 amount = 1000 ether;
-    uint256 paymentId = 1;
+  function test_revertIfPayWithInvalidTokenAddress(uint256 amount, uint256 paymentId) public {
+    vm.assume(amount > 0);
 
     vm.prank(user);
     vm.expectRevert(IGrateful.Grateful_TokenNotWhitelisted.selector);
     grateful.pay(merchant, address(0), amount, paymentId, false);
   }
 
-  function test_payWithoutVaultYieldFundsTrue() public {
+  function test_payWithoutVaultYieldFundsTrue(uint256 amount, uint256 paymentId) public {
+    vm.assume(amount > 0);
+    vm.assume(amount <= type(uint256).max / grateful.fee());
+
     vm.prank(owner);
     grateful.removeVault(address(token));
-
-    uint256 amount = 1000 ether;
-    uint256 paymentId = 1;
 
     vm.prank(user);
     token.mint(user, amount);
@@ -160,18 +155,16 @@ contract UnitPayment is UnitBase {
     assertEq(merchantDeposit, 0);
   }
 
-  function test_revertIfPayWithZeroAddressToken() public {
-    uint256 amount = 1000 ether;
-    uint256 paymentId = 1;
+  function test_revertIfPayWithZeroAddressToken(uint256 amount, uint256 paymentId) public {
+    vm.assume(amount > 0);
 
     vm.prank(user);
     vm.expectRevert(IGrateful.Grateful_TokenNotWhitelisted.selector);
     grateful.pay(merchant, address(0), amount, paymentId, false);
   }
 
-  function test_revertIfPayToZeroAddressMerchant() public {
-    uint256 amount = 1000 ether;
-    uint256 paymentId = 1;
+  function test_revertIfPayToZeroAddressMerchant(uint256 amount, uint256 paymentId) public {
+    vm.assume(amount > 0);
 
     vm.prank(user);
     token.mint(user, amount);
@@ -183,13 +176,16 @@ contract UnitPayment is UnitBase {
     grateful.pay(address(0), address(token), amount, paymentId, false);
   }
 
-  function test_payWithCustomFee() public {
-    uint256 customFee = 0.02 ether; // 2%
+  function test_payWithCustomFee(uint256 amount, uint256 paymentId, uint256 customFee) public {
+    vm.assume(amount > 0);
+    vm.assume(customFee <= grateful.MAX_FEE());
+
+    if (customFee > 0) {
+      vm.assume(amount <= type(uint256).max / customFee);
+    }
+
     vm.prank(owner);
     grateful.setCustomFee(customFee, merchant);
-
-    uint256 amount = 1000 ether;
-    uint256 paymentId = 1;
 
     vm.prank(user);
     token.mint(user, amount);
@@ -206,12 +202,12 @@ contract UnitPayment is UnitBase {
     assertEq(token.balanceOf(merchant), expectedMerchantAmount);
   }
 
-  function test_payWithVaultNotSetAndYieldFundsTrue() public {
+  function test_payWithVaultNotSetAndYieldFundsTrue(uint256 amount, uint256 paymentId) public {
+    vm.assume(amount > 0);
+    vm.assume(amount <= type(uint256).max / grateful.fee());
+
     vm.prank(owner);
     grateful.removeVault(address(token));
-
-    uint256 amount = 1000 ether;
-    uint256 paymentId = 1;
 
     vm.prank(user);
     token.mint(user, amount);

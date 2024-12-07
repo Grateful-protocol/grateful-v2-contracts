@@ -14,8 +14,12 @@ import {ERC20Mock} from "test/mocks/ERC20Mock.sol";
 import {IPool, IRewardsController} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
 
 contract UnitWithdrawal is UnitBase {
-  function test_withdrawFullSuccess() public {
-    uint256 amount = 1000 ether;
+  function test_withdrawFullSuccess(
+    uint128 amount
+  ) public {
+    vm.assume(amount > 1e8);
+    vm.assume(amount <= 10 ether);
+    vm.assume(amount <= type(uint256).max / grateful.fee());
     uint256 paymentId = 1;
 
     vm.prank(user);
@@ -41,10 +45,15 @@ contract UnitWithdrawal is UnitBase {
     assertEq(finalMerchantBalance, initialDeposit);
   }
 
-  function test_withdrawPartialSuccess() public {
-    uint256 amount = 10 ether;
+  function test_withdrawPartialSuccess(uint128 amount, uint128 withdrawAmount) public {
+    vm.assume(amount > 0);
+    vm.assume(amount <= 10 ether);
+    vm.assume(amount <= type(uint256).max / grateful.fee());
+    vm.assume(withdrawAmount > 0);
+    vm.assume(withdrawAmount <= grateful.applyFee(merchant, amount));
+    vm.assume(withdrawAmount >= 100_000); // Ensure withdrawAmount is large enough for meaningful tolerance
+
     uint256 paymentId = 1;
-    uint256 withdrawAmount = 5 ether;
     uint256 tolerance = withdrawAmount / 10_000; // 0.01% precision loss tolerance
 
     vm.prank(user);
@@ -73,10 +82,15 @@ contract UnitWithdrawal is UnitBase {
     assertApproxEqAbs(finalDeposit, initialDeposit - withdrawAmount, tolerance);
   }
 
-  function test_withdrawMultipleFullSuccess() public {
+  function test_withdrawMultipleFullSuccess(
+    uint128 amount
+  ) public {
+    vm.assume(amount > 0);
+    vm.assume(amount <= 10 ether);
+    vm.assume(amount <= type(uint256).max / grateful.fee());
+
     (address token2, AaveV3Vault vault2) = _deployNewTokenAndVault();
 
-    uint256 amount = 1000 ether;
     uint256 paymentId1 = 1;
     uint256 paymentId2 = 2;
 
@@ -112,10 +126,16 @@ contract UnitWithdrawal is UnitBase {
     assertEq(finalMerchantBalanceToken2, expectedMerchantBalanceToken2);
   }
 
-  function test_withdrawMultiplePartialSuccess() public {
+  function test_withdrawMultiplePartialSuccess(uint128 amount, uint128 withdrawAmount) public {
+    vm.assume(amount > 0);
+    vm.assume(amount <= 10 ether);
+    vm.assume(amount <= type(uint256).max / grateful.fee());
+    vm.assume(withdrawAmount > 0);
+    vm.assume(withdrawAmount <= grateful.applyFee(merchant, amount));
+    vm.assume(withdrawAmount >= 100_000); // Ensure withdrawAmount is large enough for meaningful tolerance
+
     (address token2, AaveV3Vault vault2) = _deployNewTokenAndVault();
 
-    uint256 amount = 10 ether;
     uint256 paymentId1 = 1;
     uint256 paymentId2 = 2;
 
@@ -134,8 +154,8 @@ contract UnitWithdrawal is UnitBase {
     tokens[1] = token2;
 
     uint256[] memory assets = new uint256[](2);
-    assets[0] = 5 ether;
-    assets[1] = 5 ether;
+    assets[0] = withdrawAmount;
+    assets[1] = withdrawAmount;
 
     vm.prank(merchant);
     vm.expectEmit(true, true, true, true);
@@ -147,7 +167,7 @@ contract UnitWithdrawal is UnitBase {
     uint256 finalMerchantBalanceToken1 = token.balanceOf(merchant);
     uint256 finalMerchantBalanceToken2 = ERC20Mock(token2).balanceOf(merchant);
 
-    uint256 tolerance = (assets[0] * 1) / 10_000; // 0.01% precision loss tolerance
+    uint256 tolerance = (withdrawAmount * 1) / 10_000; // 0.01% precision loss tolerance
 
     assertApproxEqAbs(finalMerchantBalanceToken1, assets[0], tolerance);
     assertApproxEqAbs(finalMerchantBalanceToken2, assets[1], tolerance);
@@ -176,8 +196,12 @@ contract UnitWithdrawal is UnitBase {
     grateful.withdraw(address(0));
   }
 
-  function test_revertIfWithdrawInvalidAmount() public {
-    uint256 amount = 1000 ether;
+  function test_revertIfWithdrawInvalidAmount(
+    uint128 amount
+  ) public {
+    vm.assume(amount > 0);
+    vm.assume(amount <= 10 ether);
+    vm.assume(amount <= type(uint256).max / grateful.fee());
     uint256 paymentId = 1;
 
     vm.prank(user);
@@ -192,8 +216,12 @@ contract UnitWithdrawal is UnitBase {
     grateful.withdraw(address(token), 0);
   }
 
-  function test_revertIfWithdrawExceedsShares() public {
-    uint256 amount = 1000 ether;
+  function test_revertIfWithdrawExceedsShares(
+    uint128 amount
+  ) public {
+    vm.assume(amount > 0);
+    vm.assume(amount <= 10 ether);
+    vm.assume(amount <= type(uint256).max / grateful.fee());
     uint256 paymentId = 1;
 
     vm.prank(user);
@@ -205,16 +233,21 @@ contract UnitWithdrawal is UnitBase {
 
     vm.prank(merchant);
     vm.expectRevert();
-    grateful.withdraw(address(token), 2000 ether);
+    grateful.withdraw(address(token), amount * 2);
   }
 
-  function test_revertIfWithdrawMultipleMismatchedArrays() public {
+  function test_revertIfWithdrawMultipleMismatchedArrays(
+    uint128 amount
+  ) public {
+    vm.assume(amount > 0);
+    vm.assume(amount <= 10 ether);
+
     address[] memory tokens = new address[](2);
     tokens[0] = address(token);
     tokens[1] = address(token);
 
     uint256[] memory assets = new uint256[](1);
-    assets[0] = 1000 ether;
+    assets[0] = amount;
 
     vm.prank(merchant);
     vm.expectRevert(IGrateful.Grateful_MismatchedArrays.selector);

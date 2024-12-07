@@ -12,8 +12,10 @@ contract UnitFeeManagement is UnitBase {
                               SETTING GENERAL FEE
     //////////////////////////////////////////////////////////////*/
 
-  function test_setFeeSuccess() public {
-    uint256 newFee = 0.02 ether; // 2%
+  function test_setFeeSuccess(
+    uint256 newFee
+  ) public {
+    vm.assume(newFee <= grateful.MAX_FEE());
 
     // Set the fee as the owner
     vm.prank(owner);
@@ -25,17 +27,20 @@ contract UnitFeeManagement is UnitBase {
     assertEq(grateful.fee(), newFee, "Fee was not updated correctly");
   }
 
-  function test_revertIfSetFeeNotOwner() public {
-    uint256 newFee = 0.02 ether; // 2%
+  function test_revertIfSetFeeNotOwner(address nonOwner, uint256 newFee) public {
+    vm.assume(nonOwner != owner);
+    vm.assume(newFee <= grateful.MAX_FEE());
 
     // Attempt to set the fee as a non-owner and expect a revert
-    vm.prank(user);
+    vm.prank(nonOwner);
     vm.expectRevert();
     grateful.setFee(newFee);
   }
 
-  function test_revertIfSetFeeTooHigh() public {
-    uint256 invalidFee = 1.1 ether; // 110%, exceeds MAX_FEE
+  function test_revertIfSetFeeTooHigh(
+    uint256 invalidFee
+  ) public {
+    vm.assume(invalidFee > grateful.MAX_FEE());
 
     // Attempt to set an invalid fee and expect a revert
     vm.prank(owner);
@@ -47,8 +52,10 @@ contract UnitFeeManagement is UnitBase {
                           SETTING PERFORMANCE FEE
     //////////////////////////////////////////////////////////////*/
 
-  function test_setPerformanceFeeSuccess() public {
-    uint256 newPerformanceFee = 0.1 ether; // 10%
+  function test_setPerformanceFeeSuccess(
+    uint256 newPerformanceFee
+  ) public {
+    vm.assume(newPerformanceFee <= grateful.MAX_PERFORMANCE_FEE());
 
     // Set the performance fee as the owner
     vm.prank(owner);
@@ -60,17 +67,20 @@ contract UnitFeeManagement is UnitBase {
     assertEq(grateful.performanceFee(), newPerformanceFee, "Performance fee was not updated correctly");
   }
 
-  function test_revertIfSetPerformanceFeeNotOwner() public {
-    uint256 newPerformanceFee = 0.1 ether; // 10%
+  function test_revertIfSetPerformanceFeeNotOwner(address nonOwner, uint256 newPerformanceFee) public {
+    vm.assume(nonOwner != owner);
+    vm.assume(newPerformanceFee <= grateful.MAX_PERFORMANCE_FEE());
 
     // Attempt to set the performance fee as a non-owner and expect a revert
-    vm.prank(user);
+    vm.prank(nonOwner);
     vm.expectRevert();
     grateful.setPerformanceFee(newPerformanceFee);
   }
 
-  function test_revertIfSetPerformanceFeeTooHigh() public {
-    uint256 invalidPerformanceFee = 0.6 ether; // 60%, exceeds MAX_PERFORMANCE_FEE
+  function test_revertIfSetPerformanceFeeTooHigh(
+    uint256 invalidPerformanceFee
+  ) public {
+    vm.assume(invalidPerformanceFee > grateful.MAX_PERFORMANCE_FEE());
 
     // Attempt to set an invalid performance fee and expect a revert
     vm.prank(owner);
@@ -82,8 +92,10 @@ contract UnitFeeManagement is UnitBase {
                         SETTING CUSTOM FEE FOR MERCHANT
     //////////////////////////////////////////////////////////////*/
 
-  function test_setCustomFeeSuccess() public {
-    uint256 customFee = 0.03 ether; // 3%
+  function test_setCustomFeeSuccess(
+    uint256 customFee
+  ) public {
+    vm.assume(customFee <= grateful.MAX_FEE());
 
     // Set a custom fee for the merchant as the owner
     vm.prank(owner);
@@ -97,17 +109,20 @@ contract UnitFeeManagement is UnitBase {
     assertEq(fee, customFee, "Custom fee value is incorrect");
   }
 
-  function test_revertIfSetCustomFeeNotOwner() public {
-    uint256 customFee = 0.03 ether; // 3%
+  function test_revertIfSetCustomFeeNotOwner(address nonOwner, uint256 customFee) public {
+    vm.assume(nonOwner != owner);
+    vm.assume(customFee <= grateful.MAX_FEE());
 
     // Attempt to set a custom fee as a non-owner and expect a revert
-    vm.prank(user);
+    vm.prank(nonOwner);
     vm.expectRevert();
     grateful.setCustomFee(customFee, merchant);
   }
 
-  function test_revertIfSetCustomFeeInvalidMerchant() public {
-    uint256 customFee = 0.03 ether; // 3%
+  function test_revertIfSetCustomFeeInvalidMerchant(
+    uint256 customFee
+  ) public {
+    vm.assume(customFee <= grateful.MAX_FEE());
 
     // Attempt to set a custom fee with an invalid merchant address and expect a revert
     vm.prank(owner);
@@ -115,8 +130,10 @@ contract UnitFeeManagement is UnitBase {
     grateful.setCustomFee(customFee, address(0));
   }
 
-  function test_revertIfSetCustomFeeTooHigh() public {
-    uint256 invalidCustomFee = 1.1 ether; // 110%, exceeds MAX_FEE
+  function test_revertIfSetCustomFeeTooHigh(
+    uint256 invalidCustomFee
+  ) public {
+    vm.assume(invalidCustomFee > grateful.MAX_FEE());
 
     // Attempt to set an invalid custom fee and expect a revert
     vm.prank(owner);
@@ -128,8 +145,10 @@ contract UnitFeeManagement is UnitBase {
                           UNSETTING CUSTOM FEE
     //////////////////////////////////////////////////////////////*/
 
-  function test_unsetCustomFeeSuccess() public {
-    uint256 customFee = 0.03 ether; // 3%
+  function test_unsetCustomFeeSuccess(
+    uint256 customFee
+  ) public {
+    vm.assume(customFee <= grateful.MAX_FEE());
 
     // Arrange: Set a custom fee first
     vm.prank(owner);
@@ -147,9 +166,13 @@ contract UnitFeeManagement is UnitBase {
     assertEq(fee, 0, "Custom fee value should be zero after unset");
   }
 
-  function test_revertIfUnsetCustomFeeNotOwner() public {
+  function test_revertIfUnsetCustomFeeNotOwner(
+    address nonOwner
+  ) public {
+    vm.assume(nonOwner != owner);
+
     // Attempt to unset a custom fee as a non-owner and expect a revert
-    vm.prank(user);
+    vm.prank(nonOwner);
     vm.expectRevert();
     grateful.unsetCustomFee(merchant);
   }
@@ -165,8 +188,13 @@ contract UnitFeeManagement is UnitBase {
                             APPLY FEE FUNCTION
     //////////////////////////////////////////////////////////////*/
 
-  function test_applyFeeWithGeneralFee() public {
-    uint256 amount = 0 ether; // Example amount
+  function test_applyFeeWithGeneralFee(
+    uint256 amount
+  ) public {
+    vm.assume(amount > 0);
+    // Ensure amount * fee won't overflow when divided by 1e18
+    vm.assume(amount <= type(uint256).max / grateful.fee());
+
     uint256 expectedFee = (amount * grateful.fee()) / 1e18;
     uint256 expectedAmountAfterFee = amount - expectedFee;
 
@@ -177,9 +205,12 @@ contract UnitFeeManagement is UnitBase {
     assertEq(amountAfterFee, expectedAmountAfterFee, "Amount after fee is incorrect");
   }
 
-  function test_applyFeeWithCustomFee() public {
-    uint256 amount = 0 ether; // Example amount
-    uint256 customFee = 0.02 ether; // 2%
+  function test_applyFeeWithCustomFee(uint256 amount, uint256 customFee) public {
+    vm.assume(amount > 0);
+    vm.assume(customFee <= grateful.MAX_FEE());
+    if (customFee > 0) {
+      vm.assume(amount <= type(uint256).max / customFee);
+    }
 
     // Arrange: Set a custom fee for the merchant
     vm.prank(owner);
@@ -199,8 +230,13 @@ contract UnitFeeManagement is UnitBase {
                         CALCULATE PERFORMANCE FEE
     //////////////////////////////////////////////////////////////*/
 
-  function test_calculatePerformanceFee() public {
-    uint256 profit = 500 ether; // Example profit
+  function test_calculatePerformanceFee(
+    uint256 profit
+  ) public {
+    vm.assume(profit > 0);
+    // Ensure profit * performanceFee won't overflow when divided by 1e18
+    vm.assume(profit <= type(uint256).max / grateful.performanceFee());
+
     uint256 expectedPerformanceFee = (profit * grateful.performanceFee()) / 1e18;
 
     // Calculate performance fee
@@ -214,27 +250,28 @@ contract UnitFeeManagement is UnitBase {
                            ACCESS CONTROL TESTS
     //////////////////////////////////////////////////////////////*/
 
-  function test_revertIfNonOwnerCallsFeeFunctions() public {
-    uint256 newFee = 0.02 ether;
-    uint256 newPerformanceFee = 0.1 ether;
+  function test_revertIfNonOwnerCallsFeeFunctions(address nonOwner, uint256 newFee, uint256 newPerformanceFee) public {
+    vm.assume(nonOwner != owner);
+    vm.assume(newFee <= grateful.MAX_FEE());
+    vm.assume(newPerformanceFee <= grateful.MAX_PERFORMANCE_FEE());
 
     // Attempt to call setFee as non-owner
-    vm.prank(user);
+    vm.prank(nonOwner);
     vm.expectRevert();
     grateful.setFee(newFee);
 
     // Attempt to call setPerformanceFee as non-owner
-    vm.prank(user);
+    vm.prank(nonOwner);
     vm.expectRevert();
     grateful.setPerformanceFee(newPerformanceFee);
 
     // Attempt to call setCustomFee as non-owner
-    vm.prank(user);
+    vm.prank(nonOwner);
     vm.expectRevert();
     grateful.setCustomFee(newFee, merchant);
 
     // Attempt to call unsetCustomFee as non-owner
-    vm.prank(user);
+    vm.prank(nonOwner);
     vm.expectRevert();
     grateful.unsetCustomFee(merchant);
   }
