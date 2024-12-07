@@ -490,9 +490,6 @@ contract Grateful is IGrateful, Ownable2Step, ReentrancyGuard {
    * @param _isFullWithdrawal Indicates if it's a full withdrawal.
    */
   function _withdraw(address _token, uint256 _assets, bool _isFullWithdrawal) private nonReentrant {
-    if (_token == address(0)) {
-      revert Grateful_InvalidAddress();
-    }
     AaveV3Vault vault = vaults[_token];
     if (address(vault) == address(0)) {
       revert Grateful_VaultNotSet();
