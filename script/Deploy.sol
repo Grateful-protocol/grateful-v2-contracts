@@ -197,7 +197,7 @@ contract Deploy is Script {
       address[] memory _tokens = new address[](3);
       _tokens[0] = address(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d); // USDC
       _tokens[1] = address(0x55d398326f99059fF775485246999027B3197955); // USDT
-      _tokens[2] = address(0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1); // DAI
+      _tokens[2] = address(0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3); // DAI
 
       VaultDeploymentParams[] memory _vaults = new VaultDeploymentParams[](2);
 
