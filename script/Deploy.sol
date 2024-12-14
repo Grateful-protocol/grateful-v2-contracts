@@ -5,6 +5,7 @@ import {Grateful} from "contracts/Grateful.sol";
 import {AaveV3Vault} from "contracts/vaults/AaveV3Vault.sol";
 import {Script} from "forge-std/Script.sol";
 
+import {ATokenVault, IPoolAddressesProvider} from "aave-vault/ATokenVault.sol";
 import {console} from "forge-std/console.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {IPool, IRewardsController} from "yield-daddy/aave-v3/AaveV3ERC4626.sol";
@@ -310,6 +311,10 @@ contract Deploy is Script {
         IRewardsController(vaultParams.rewardsController),
         address(grateful) // newOwner
       );
+
+      // TODO: Use this vault instead of the other one
+
+      ATokenVault aTokenVault = new ATokenVault(vaultParams.token, 0, IPoolAddressesProvider(address(_params.aavePool)));
 
       // Add the vault to Grateful
       grateful.addVault(vaultParams.token, address(vault));

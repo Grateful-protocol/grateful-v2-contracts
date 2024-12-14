@@ -1,9 +1,15 @@
 forge-std/=node_modules/forge-std/src
 halmos-cheatcodes=node_modules/halmos-cheatcodes
+@openzeppelin-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/contracts
 openzeppelin-contracts/=node_modules/@openzeppelin/contracts
+@openzeppelin/contracts/=node_modules/@openzeppelin/contracts
+@openzeppelin/interfaces/=node_modules/@openzeppelin/contracts/interfaces
 aave/core-v3/=node_modules/@aave/core-v3/contracts
+@aave-v3-core/=node_modules/@aave/core-v3/contracts
+@aave-v3-periphery/=node_modules/@aave/v3-periphery/contracts
 yield-daddy/=node_modules/yield-daddy/src
 solmate/=node_modules/solmate/src
+aave-vault/=node_modules/aave-vault/src
 
 contracts/=src/contracts
 script/=script

@@ -2,10 +2,16 @@
 # yarn lockfile v1
 
 
-"@aave/core-v3@^1.19.3":
+"@aave/core-v3@1.19.3", "@aave/core-v3@^1.19.3":
   version "1.19.3"
   resolved "https://registry.yarnpkg.com/@aave/core-v3/-/core-v3-1.19.3.tgz#513e886b37a8d84d9821a4041dceb5f014919669"
   integrity sha512-Xr7+VcoU5b4mPwM4IUCnskw3lciwrnL4Xloyad8GOddYeixnri2lZYobNmErm1LwE50vqjI0O+9QGNKY2TDkeQ==
+
+"@aave/v3-periphery@github:aave/aave-v3-periphery":
+  version "2.5.2"
+  resolved "https://codeload.github.com/aave/aave-v3-periphery/tar.gz/803c3e7d6d1c6da8d91411f4d085494f7189ea0b"
+  dependencies:
+    "@aave/core-v3" "1.19.3"
 
 "@babel/code-frame@^7.0.0":
   version "7.24.2"
@@ -228,6 +234,10 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
+"@openzeppelin/contracts-upgradeable@github:OpenZeppelin/openzeppelin-contracts-upgradeable#7ec6d2a3117eb3487a5f9029203e80ceb89bd984":
+  version "4.8.1"
+  resolved "https://codeload.github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/tar.gz/7ec6d2a3117eb3487a5f9029203e80ceb89bd984"
+
 "@openzeppelin/contracts@^5.0.2":
   version "5.0.2"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-5.0.2.tgz#b1d03075e49290d06570b2fd42154d76c2a5d210"
@@ -283,6 +293,10 @@ JSONStream@^1.3.5:
   dependencies:
     jsonparse "^1.2.0"
     through ">=2.2.7 <3"
+
+"aave-vault@github:0xChin/Aave-Vault#7f2bf8b":
+  version "1.0.0"
+  resolved "https://codeload.github.com/0xChin/Aave-Vault/tar.gz/7f2bf8bc1d84230abc67f31fc09c80927b5cf246"
 
 abitype@0.7.1:
   version "0.7.1"
